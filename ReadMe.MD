@@ -5,8 +5,8 @@
 Examples: 
 ```c#
   var client = new RestClient("http://www.bookstore.com");
-  var someBooks = client.ExecuteGet<IList<Book>>("api/books?take={0}", 10);
-  var theBook = client.ExecuteGet<Book>("api/books/{0}", someBookId);
+  var someBooks = await client.GetAsync<IList<Book>>("api/books?take={0}", 10);
+  var theBook = client.Get<Book>("api/books/{0}", someBookId); //sync version
   var myReview = new BookReview() { ... };
   var myReviewBack = await client.PostAsync<BookReview, BookReview>(myReview, "api/user/reviews");
   
