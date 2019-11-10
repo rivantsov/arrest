@@ -4,20 +4,20 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-
+using Arrest.Internals;
 using Arrest.Json;
 
 namespace Arrest {
-  // args: operationContext, clientName, urlTemplate, urlArgs, callContext, response, requestBody, responseBody, timeMs, exc 
+  // args: operationContext, clientName, urlTemplate, urlArgs, callData, response, requestBody, responseBody, timeMs, exc 
   using RestClientLogAction = Action<object, string, string, object[], HttpRequestMessage, HttpResponseMessage, object, object, int, Exception>;
 
-  public delegate void ApiLogger(object context, string clientName, HttpRequestMessage callContext, string requestBody,
+  public delegate void ApiLogger(object context, string clientName, HttpRequestMessage callData, string requestBody,
            HttpResponseMessage response, string responseBody, int timeMs); 
 
   public class RestCallEventArgs : EventArgs {
-    public readonly RestCallInfo CallContext;
-    internal RestCallEventArgs(RestCallInfo context) {
-      CallContext = context;
+    public readonly RestCallData CallData;
+    internal RestCallEventArgs(RestCallData callData) {
+      CallData = callData;
     }
   }
 
@@ -54,19 +54,19 @@ namespace Arrest {
       BadRequestContentType = badRequestContentType ?? ServerErrorContentType;
     }
 
-    internal void OnSending(RestClient client, RestCallInfo callContext) {
-      Sending?.Invoke(client, new RestCallEventArgs(callContext));
+    internal void OnSending(RestClient client, RestCallData callData) {
+      Sending?.Invoke(client, new RestCallEventArgs(callData));
     }
 
-    internal void OnReceived(RestClient client, RestCallInfo callContext) {
-      Received?.Invoke(client, new RestCallEventArgs(callContext));
+    internal void OnReceived(RestClient client, RestCallData callData) {
+      Received?.Invoke(client, new RestCallEventArgs(callData));
     }
 
-    internal void OnReceivedError(RestClient client, RestCallInfo callContext) {
-      ReceivedError?.Invoke(client, new RestCallEventArgs(callContext));
+    internal void OnReceivedError(RestClient client, RestCallData callData) {
+      ReceivedError?.Invoke(client, new RestCallEventArgs(callData));
     }
-    internal void OnCompleted(RestClient client, RestCallInfo callContext) {
-      Completed?.Invoke(client, new RestCallEventArgs(callContext));
+    internal void OnCompleted(RestClient client, RestCallData callData) {
+      Completed?.Invoke(client, new RestCallEventArgs(callData));
     }
 
     #region Validation

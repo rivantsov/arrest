@@ -4,9 +4,9 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 
-namespace Arrest {
+namespace Arrest.Internals {
 
-  public class RestCallInfo {
+  public class RestCallData {
     public HttpMethod HttpMethod;
     public string UrlTemplate;
     public object[] UrlParameters;
@@ -15,7 +15,7 @@ namespace Arrest {
     public Type RequestBodyType;
     public object RequestBodyObject;
     public string RequestBodyString;
-    public string AcceptMedaiType;
+    public string AcceptMediaType;
 
     public Type ResponseBodyType;
     public object ResponseBodyObject;

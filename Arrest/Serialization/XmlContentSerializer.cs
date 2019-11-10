@@ -8,10 +8,10 @@ using System.Xml.Serialization;
 
 namespace Arrest.Xml {
   /// <summary>
-  /// Warning: XML serialization is not completely functional, has problems when serialized type is list/array
-  /// Json serializer works OK in these cases. Use it at your own risk; it might work if you use only single root
-  /// object in request/response bodies. 
+  /// XML content serializer.
   /// </summary>
+  /// <remarks>
+  /// </remarks>
   public class XmlContentSerializer : IContentSerializer {
     public string ContentTypes { get; set; } = "application/xml";
 

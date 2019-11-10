@@ -5,41 +5,42 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Arrest.Internals;
 
 namespace Arrest {
 
 
   public partial class RestClient {
 
-    public virtual async Task<Exception> ReadErrorResponseAsync(RestCallInfo callContext) {
+    internal virtual async Task<Exception> ReadErrorResponseAsync(RestCallData callData) {
       try {
-        var response = callContext.Response;
+        var response = callData.Response;
         var hasBody = response.Content != null && response.Content.Headers.ContentLength > 0;
         if(!hasBody)
           return new RestException("Web API call failed, no details returned. HTTP Status: " + response.StatusCode,
                response.StatusCode);
-        callContext.ResponseBodyString = await response.Content.ReadAsStringAsync();
+        callData.ResponseBodyString = await response.Content.ReadAsStringAsync();
         switch (response.StatusCode) {
           case HttpStatusCode.BadRequest:
             if(Settings.BadRequestContentType == typeof(string))
               return await ReadErrorResponseUntypedAsync(response);
-            var errObj = Settings.Serializer.Deserialize(Settings.BadRequestContentType, callContext.ResponseBodyString);
+            var errObj = Settings.Serializer.Deserialize(Settings.BadRequestContentType, callData.ResponseBodyString);
             return new BadRequestException(errObj);
           default:
             if(Settings.ServerErrorContentType == typeof(string))
               return await ReadErrorResponseUntypedAsync(response);
             //deserialize custom object
             try {
-              var serverErr = Settings.Serializer.Deserialize(Settings.ServerErrorContentType, callContext.ResponseBodyString);
-              return new RestException("Server error: " + callContext.ResponseBodyString, response.StatusCode, serverErr);
+              var serverErr = Settings.Serializer.Deserialize(Settings.ServerErrorContentType, callData.ResponseBodyString);
+              return new RestException("Server error: " + callData.ResponseBodyString, response.StatusCode, serverErr);
             } catch(Exception ex) {
-              var remoteErr = callContext.ResponseBodyString;
+              var remoteErr = callData.ResponseBodyString;
               var msg = $"Server error: {remoteErr}. RestClient: failed to deserialize response into error object, exc: {ex}";
               return new RestException(msg, response.StatusCode, remoteErr);
             }
         }//switch 
       } catch(Exception exc) {
-        Type errorType = callContext.Response.StatusCode == HttpStatusCode.BadRequest ? 
+        Type errorType = callData.Response.StatusCode == HttpStatusCode.BadRequest ? 
                              Settings.BadRequestContentType : Settings.ServerErrorContentType;
         var explain = $@"Failed to read error response returned from the service.
 Expected content type: {errorType}. Consider changing it to match the error response for remote service. 
