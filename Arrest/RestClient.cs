@@ -26,14 +26,6 @@ namespace Arrest {
     // We create singleton of HttpClientHandler which actually handles all HTTP interactions. 
     public static HttpClientHandler SharedHttpClientHandler { get; private set; }
 
-    // Replace with AppTime.UtcNow or any facility that provides testable environment. 
-    public static Func<DateTime> GetUtc = () => DateTime.UtcNow;
-
-    //For staging sites, to allow using https with self-issued certificates
-    public static void AllowSelfIssuedCertificates() {
-      ServicePointManager.ServerCertificateValidationCallback = (x1, x2, x3, x4) => true;
-    }
-
     #endregion 
 
     /// <summary>Identifier of the client, written to log, to easier identify entries.</summary> 
@@ -51,10 +43,11 @@ namespace Arrest {
                      CancellationToken? cancellationToken = null,
                      JsonNameMapping nameMapping = JsonNameMapping.Default, 
                      Type badRequestContentType = null)
-      : this(new RestClientSettings(baseUrl, nameMapping, new JsonContentSerializer(nameMapping), badRequestContentType: badRequestContentType), appContext: appContext) { }
+      : this(new RestClientSettings(baseUrl, new JsonContentSerializer(nameMapping), badRequestContentType: badRequestContentType),
+            appContext: appContext) { }
 
-    public RestClient(RestClientSettings settings, string clientName = null, object appContext = null, CancellationToken? cancellationToken = null, 
-                 HttpClient httpClient = null) {
+    public RestClient(RestClientSettings settings, string clientName = null, object appContext = null, 
+                 CancellationToken? cancellationToken = null, HttpClient httpClient = null) {
       RestClientSettings.Validate(settings); 
       Settings = settings;
       AppContext = appContext;
@@ -129,14 +122,13 @@ namespace Arrest {
     }
     #endregion
 
-
     #region private methods
 
     private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] urlParameters,
                         TBody body, string acceptMediaType = null) {
-      var start = GetTimestamp();
+      var start = RestClientHelper.GetTimestamp();
       var callData = new RestCallData() {
-        StartedAtUtc = GetUtc(),
+        StartedAtUtc = RestClientHelper.GetUtc(),
         HttpMethod = method,
         UrlTemplate = urlTemplate,
         UrlParameters = urlParameters,
@@ -155,29 +147,29 @@ namespace Arrest {
         headers.Add(kv.Key, kv.Value);
       BuildHttpRequestContent(callData);
 
-      Settings.OnSending(this, callData);
+      Settings.Events.OnSendingRequest(this, callData);
 
       //actually make a call
       callData.Response = await HttpClient.SendAsync(callData.Request, this.CancellationToken);
-      callData.TimeElapsed = GetTimeSince(start); //measure time in case we are about to cancel and throw
+      callData.TimeElapsed = RestClientHelper.GetTimeSince(start); //measure time in case we are about to cancel and throw
 
       //check error
       if (callData.Response.IsSuccessStatusCode) {
-        Settings.OnReceived(this, callData);
+        Settings.Events.OnReceivedResponse(this, callData);
         await ReadResponseBodyAsync(callData).ConfigureAwait(false);
       } else {
         callData.Exception = await this.ReadErrorResponseAsync(callData);
-        Settings.OnReceivedError(this, callData);
+        Settings.Events.OnReceivedError(this, callData);
       }
       // get time again to include deserialization time
-      callData.TimeElapsed = GetTimeSince(start);
+      callData.TimeElapsed = RestClientHelper.GetTimeSince(start);
       // Log
       // args: operationContext, clientName, urlTemplate, urlArgs, request, response, requestBody, responseBody, timeMs, exc 
       var timeMs = (int) callData.TimeElapsed.TotalMilliseconds;
       Settings.LogAction?.Invoke(this.AppContext, this.ClientName, callData.UrlTemplate, callData.UrlParameters,
                             callData.Request, callData.Response, callData.RequestBodyString, callData.ResponseBodyString,
                             timeMs, callData.Exception);
-      Settings.OnCompleted(this, callData);
+      Settings.Events.OnCompleted(this, callData);
       if (callData.Exception != null)
         throw callData.Exception;
       return (TResult)callData.ResponseBodyObject;
@@ -249,10 +241,35 @@ namespace Arrest {
         var delim = needDelim ? "/" : string.Empty;
         fullTemplate = Settings.ServiceUrl + delim + template;
       }
-      return FormatUri(fullTemplate, args);
+      return RestClientHelper.FormatUri(fullTemplate, args);
     }
 
     #endregion
 
+    #region Utilities
+
+    public enum ReturnValueKind {
+      None,
+      Object,
+      HttpResponseMessage,
+      HttpStatusCode,
+      HttpContent,
+      Stream,
+    }
+
+    private static ReturnValueKind GetReturnValueKind(Type type) {
+      if (type == typeof(DBNull))
+        return ReturnValueKind.None;
+      if (type == typeof(HttpResponseMessage))
+        return ReturnValueKind.HttpResponseMessage;
+      if (type == typeof(HttpStatusCode))
+        return ReturnValueKind.HttpStatusCode;
+      if (type == typeof(HttpContent))
+        return ReturnValueKind.HttpContent;
+      if (typeof(System.IO.Stream).IsAssignableFrom(type))
+        return ReturnValueKind.Stream;
+      return ReturnValueKind.Object;
+    }
+    #endregion
   }//class
 }

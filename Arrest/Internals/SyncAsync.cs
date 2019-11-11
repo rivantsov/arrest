@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Arrest {
+namespace Arrest.Internals {
 
   public static class SyncAsync {
 

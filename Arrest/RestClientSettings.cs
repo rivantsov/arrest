@@ -14,17 +14,9 @@ namespace Arrest {
   public delegate void ApiLogger(object context, string clientName, HttpRequestMessage callData, string requestBody,
            HttpResponseMessage response, string responseBody, int timeMs); 
 
-  public class RestCallEventArgs : EventArgs {
-    public readonly RestCallData CallData;
-    internal RestCallEventArgs(RestCallData callData) {
-      CallData = callData;
-    }
-  }
-
 
   public class RestClientSettings {
     public string ServiceUrl;
-    public JsonNameMapping NameMapping;
     public readonly IContentSerializer Serializer;
     public string ExplicitAcceptList; //sometimes needed to explicitly add certain variations returned by server
     public Encoding Encoding = Encoding.UTF8;
@@ -32,41 +24,22 @@ namespace Arrest {
     public readonly Type BadRequestContentType;
     public readonly Type ServerErrorContentType;
 
-    public event EventHandler<RestCallEventArgs> Sending;
-    public event EventHandler<RestCallEventArgs> Received;
-    public event EventHandler<RestCallEventArgs> ReceivedError;
-    public event EventHandler<RestCallEventArgs> Completed;
+    public readonly RestClientEvents Events = new RestClientEvents(); 
 
     public RestClientLogAction LogAction;
 
 
-    public RestClientSettings(string serviceUrl, JsonNameMapping nameMapping = JsonNameMapping.Default,
+    public RestClientSettings(string serviceUrl,
           IContentSerializer serializer = null, string explicitAcceptList = null, RestClientLogAction log = null,
           Type badRequestContentType = null, Type serverErrorContentType = null) {
       if(serviceUrl != null && serviceUrl.EndsWith("/"))
         serviceUrl = serviceUrl.Substring(0, serviceUrl.Length - 1);
       ServiceUrl = serviceUrl;
-      NameMapping = nameMapping;
-      Serializer = serializer ?? new JsonContentSerializer(nameMapping);
+      Serializer = serializer ?? new JsonContentSerializer();
       ExplicitAcceptList = explicitAcceptList ?? Serializer.ContentTypes; 
       LogAction = log;
       ServerErrorContentType = serverErrorContentType ?? typeof(string);
       BadRequestContentType = badRequestContentType ?? ServerErrorContentType;
-    }
-
-    internal void OnSending(RestClient client, RestCallData callData) {
-      Sending?.Invoke(client, new RestCallEventArgs(callData));
-    }
-
-    internal void OnReceived(RestClient client, RestCallData callData) {
-      Received?.Invoke(client, new RestCallEventArgs(callData));
-    }
-
-    internal void OnReceivedError(RestClient client, RestCallData callData) {
-      ReceivedError?.Invoke(client, new RestCallEventArgs(callData));
-    }
-    internal void OnCompleted(RestClient client, RestCallData callData) {
-      Completed?.Invoke(client, new RestCallEventArgs(callData));
     }
 
     #region Validation

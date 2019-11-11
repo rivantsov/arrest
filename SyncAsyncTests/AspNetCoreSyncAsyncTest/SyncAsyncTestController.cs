@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Arrest;
 using Arrest.Sync;
+using Arrest.Internals;
 
 // This is verification app for SyncAsync bridge, to ensure that SyncAsync.RunSync methods work OK, 
 //  without deadlocka under ASP.NET and ASP.NET core. Just run this web app and hit the URL 
@@ -30,7 +31,7 @@ namespace AspNetCoreSyncAsyncTest {
       // var res = SyncAsync.RunSync(() => QueryUtcAsync()); //works OK
 
       // The following call is a test for non-generic overload of RunSync 
-      Arrest.SyncAsync.RunSync(() => Delay(20));
+     SyncAsync.RunSync(() => Delay(20));
       // Call method that will call non-async method restClient.Get<>
       var res = QueryUtc(); // works OK
       return $"Success! - sync->async call did not deadlock. Result UTC now: {res}";

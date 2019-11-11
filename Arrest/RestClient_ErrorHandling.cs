@@ -17,7 +17,7 @@ namespace Arrest {
         var response = callData.Response;
         var hasBody = response.Content != null && response.Content.Headers.ContentLength > 0;
         if(!hasBody)
-          return new RestException("Web API call failed, no details returned. HTTP Status: " + response.StatusCode,
+          return new RestException($"Web API call failed, no details returned. HTTP Status: {response.StatusCode}",
                response.StatusCode);
         callData.ResponseBodyString = await response.Content.ReadAsStringAsync();
         switch (response.StatusCode) {
