@@ -31,11 +31,15 @@ namespace Arrest.Internals {
     private static void ExecuteJob<TResult>(object job) {
       var jobT = (AsyncJob<TResult>)job;
       try {
-        jobT.Result = jobT.JobFunc().Result; 
+        jobT.Result = jobT.JobFunc().Result;
+      } catch(AggregateException aex) { 
+        //unwrap aggregate exc; there should be just one inside
+        jobT.Exception = aex.InnerExceptions[0];
       } catch (Exception ex) {
         jobT.Exception = ex;
+      } finally {
+        jobT.CompletedSignal.Set();
       }
-      jobT.CompletedSignal.Set();
     }
   }
 
