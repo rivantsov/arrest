@@ -241,7 +241,7 @@ namespace Arrest {
         var delim = needDelim ? "/" : string.Empty;
         fullTemplate = Settings.ServiceUrl + delim + template;
       }
-      return RestClientHelper.FormatUri(fullTemplate, args);
+      return RestClientHelper.FormatUrl(fullTemplate, args);
     }
 
     #endregion

@@ -6,7 +6,7 @@
     <Version>1.1.0</Version>
     <Authors>Roman Ivantsov</Authors>
     <Company />
-    <Description>A wrapper around HttpClient with handly methods for sending/recieving strongly-typed objects; provides HTTP error handling.</Description>
+    <Description>A wrapper around HttpClient with handy methods for sending/receiving strongly-typed objects; provides HTTP error handling.</Description>
     <Copyright>Roman Ivantsov</Copyright>
     <PackageLicenseUrl>https://github.com/rivantsov/Arrest/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/rivantsov/Arrest</PackageProjectUrl>

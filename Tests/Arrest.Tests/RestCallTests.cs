@@ -4,6 +4,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Arrest.TestService;
 using Arrest;
 using Arrest.Sync;
+using System.Diagnostics;
+using System.Globalization;
+using Arrest.Internals;
 
 namespace Arrest.Tests {
 
@@ -44,5 +47,15 @@ namespace Arrest.Tests {
       var str = await client.GetStringAsync("stringvalue");
       Assert.AreEqual("This is string", str);
     }
+
+    [TestMethod]
+    public void TestUrlFormattingWithObject() {
+
+      RestClientHelper.FormatAsUrlQuery(sample); 
+
+      Debug.WriteLine($"result: {url}");
+    }
+
+
   }
 }
