@@ -11,6 +11,7 @@ using System.Threading;
 using System.IO;
 using Arrest.Json;
 using Arrest.Internals;
+using System.Diagnostics;
 
 namespace Arrest {
 
@@ -157,13 +158,19 @@ namespace Arrest {
       return RestClientHelper.BuildUrlQuery(queryParams); 
     }
 
-    #endregion 
+    #endregion
+
+    //For staging sites, to allow using https with self-issued certificates
+    public static void SetAllowSelfIssuedCertificates() {
+      ServicePointManager.ServerCertificateValidationCallback = (x1, x2, x3, x4) => true;
+    }
+
 
     #region private methods
 
     private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] urlParameters,
                         TBody body, string acceptMediaType = null) {
-      var start = RestClientHelper.GetTimestamp();
+      var start = GetTimestamp();
       var callData = new RestCallData() {
         StartedAtUtc = RestClientHelper.GetUtc(),
         HttpMethod = method,
@@ -188,7 +195,7 @@ namespace Arrest {
 
       //actually make a call
       callData.Response = await HttpClient.SendAsync(callData.Request, this.CancellationToken);
-      callData.TimeElapsed = RestClientHelper.GetTimeSince(start); //measure time in case we are about to cancel and throw
+      callData.TimeElapsed = GetTimeSince(start); //measure time in case we are about to cancel and throw
 
       //check error
       if (callData.Response.IsSuccessStatusCode) {
@@ -199,7 +206,7 @@ namespace Arrest {
         Settings.Events.OnReceivedError(this, callData);
       }
       // get time again to include deserialization time
-      callData.TimeElapsed = RestClientHelper.GetTimeSince(start);
+      callData.TimeElapsed = GetTimeSince(start);
       // Log
       // args: operationContext, clientName, urlTemplate, urlArgs, request, response, requestBody, responseBody, timeMs, exc 
       var timeMs = (int) callData.TimeElapsed.TotalMilliseconds;
@@ -292,6 +299,19 @@ namespace Arrest {
         return ReturnValueKind.Stream;
       return ReturnValueKind.Object;
     }
+
+    private static long GetTimestamp() {
+      return Stopwatch.GetTimestamp();
+    }
+
+    private static TimeSpan GetTimeSince(long start) {
+      var now = Stopwatch.GetTimestamp();
+      var time = TimeSpan.FromMilliseconds((now - start) * 1000 / Stopwatch.Frequency);
+      return time;
+    }
+
+
+
     #endregion
   }//class
 }

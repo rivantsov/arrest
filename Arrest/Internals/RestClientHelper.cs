@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -21,7 +22,7 @@ namespace Arrest.Internals {
         return template;
       if (template.Contains(':'))
         throw new ArgumentException(errorMessage);
-      var sArgs = args.Select(a => EscapeForUrl(a)).ToArray(); //escape
+      var sArgs = args.Select(a => FormatForUrl(a)).ToArray(); //escape
       return string.Format(template, sArgs);
     }
 
@@ -34,8 +35,10 @@ namespace Arrest.Internals {
       var members = type.GetMembers(flags);
       foreach(var member in members) {
         var pv = member.GetValue(value);
-        if (pv != null)
-          segments.Add($"{member.Name}={EscapeForUrl(pv)}");
+        if (pv == null)
+          continue;
+        var pvStr = FormatForUrl(pv);
+        segments.Add($"{member.Name}={pvStr}");
       }
       return string.Join("&", segments);
     }
@@ -46,28 +49,17 @@ namespace Arrest.Internals {
         case PropertyInfo p: return p.GetValue(instance);
         default: return null; 
       }
-
     }
 
-    public static string EscapeForUrl(object value) {
-      return value == null ? string.Empty : Uri.EscapeDataString(value.ToString());
+    private static string FormatForUrl(object value) {
+      // convert using invariant culture
+      var str = Convert.ToString(value, CultureInfo.InvariantCulture);
+      return EscapeForUrl(str); 
     }
 
-    public static long GetTimestamp() {
-      return Stopwatch.GetTimestamp();
+    public static string EscapeForUrl(string value) {
+      return string.IsNullOrEmpty(value) ? string.Empty : Uri.EscapeDataString(value);
     }
-
-    public static TimeSpan GetTimeSince(long start) {
-      var now = Stopwatch.GetTimestamp();
-      var time = TimeSpan.FromMilliseconds((now - start) * 1000 / Stopwatch.Frequency);
-      return time;
-    }
-
-    //For staging sites, to allow using https with self-issued certificates
-    public static void SetAllowSelfIssuedCertificates() {
-      ServicePointManager.ServerCertificateValidationCallback = (x1, x2, x3, x4) => true;
-    }
-
 
 
   }

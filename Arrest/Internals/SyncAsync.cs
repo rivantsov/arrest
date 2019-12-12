@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 
 namespace Arrest.Internals {
 
+  // Sync-async bridge - methods to execute async methods from sync, without thread deadlocks 
+  // 
   public static class SyncAsync {
 
     class AsyncJob<T> {
