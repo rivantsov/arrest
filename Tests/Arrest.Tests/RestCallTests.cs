@@ -40,22 +40,31 @@ namespace Arrest.Tests {
       newItemBack.Name += "_U";
       newItemBack = await client.PutAsync<DataItem, DataItem>(newItemBack, "items");
       Assert.AreEqual(currV + 1, newItemBack.Version, "Expected version incremented");
-
-
-
       // get string as text
       var str = await client.GetStringAsync("stringvalue");
       Assert.AreEqual("This is string", str);
     }
 
     [TestMethod]
-    public void TestUrlFormattingWithObject() {
-
-      RestClientHelper.FormatAsUrlQuery(sample); 
-
-      Debug.WriteLine($"result: {url}");
+    public void TestBuildUrlQuery() {
+      var queryParam = new QueryParameters() {
+         StrField = "a", StrProp = "b", IntField = 123
+      };
+      // Build Query part of URL from properties of an object (URL query is all after '?')
+      var query = RestClientHelper.BuildUrlQuery(queryParam);
+      Assert.AreEqual("StrProp=b&StrField=a&IntField=123", query); 
+      Debug.WriteLine($"result: {query}");
     }
 
-
+    // Sample query parameters class for test
+    class QueryParameters {
+      public string StrField;
+      public string StrProp { get; set; }
+      public int? IntField;
+      public DateTime? DateProp { get; set; }
+      
+      public static int Foo() => 3; 
+      public int Bar() => 5; 
+    }
   }
 }

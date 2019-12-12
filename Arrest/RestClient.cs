@@ -122,6 +122,43 @@ namespace Arrest {
     }
     #endregion
 
+    #region  URL formatting helpers
+    /// <summary>
+    /// Formats URL from a template with standard numeric placeholders, ex: {0}. All argument values 
+    /// are URL-escaped. The returned URL is full URL, starting with base service address. 
+    /// </summary>
+    /// <param name="template">URL template, not including base service part.</param>
+    /// <param name="args">Arguments to insert into the template.</param>
+    /// <returns>Full formatted URL.</returns>
+    public string FormatUrl(string template, params object[] args) {
+      if (string.IsNullOrWhiteSpace(template))
+        return Settings.ServiceUrl;
+      var url = RestClientHelper.FormatUrl(template, args);
+      string fullUrl;
+      //Check if template is abs URL
+      if (url.StartsWith("http://") || template.StartsWith("https://"))
+        fullUrl = template;
+      else {
+        var ch0 = url[0];
+        var needDelim = ch0 != '/' && ch0 != '?';
+        var delim = needDelim ? "/" : string.Empty;
+        fullUrl = Settings.ServiceUrl + delim + url;
+      }
+      return fullUrl;
+    }
+
+    /// <summary>
+    /// Formats the query part of URL from properties (fields) of an object (names and values).
+    /// Null-value parameters are skipped. All values are URL-escaped. 
+    /// </summary>
+    /// <param name="queryParams">Query parameters object.</param>
+    /// <returns>Constructed query part.</returns>
+    public string BuildUrlQuery(object queryParams) {
+      return RestClientHelper.BuildUrlQuery(queryParams); 
+    }
+
+    #endregion 
+
     #region private methods
 
     private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] urlParameters,
@@ -229,24 +266,9 @@ namespace Arrest {
       return serMediaType.Split(',')[0];
     }
 
-    private string FormatUrl(string template, params object[] args) {
-      string fullTemplate;
-      if (string.IsNullOrWhiteSpace(template))
-        fullTemplate = Settings.ServiceUrl;
-      else if (template.StartsWith("http://") || template.StartsWith("https://")) //Check if template is abs URL
-        fullTemplate = template;
-      else {
-        var ch0 = template[0];
-        var needDelim = ch0 != '/' && ch0 != '?';
-        var delim = needDelim ? "/" : string.Empty;
-        fullTemplate = Settings.ServiceUrl + delim + template;
-      }
-      return RestClientHelper.FormatUrl(fullTemplate, args);
-    }
-
     #endregion
 
-    #region Utilities
+    #region private utilities
 
     public enum ReturnValueKind {
       None,

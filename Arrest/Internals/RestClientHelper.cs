@@ -25,7 +25,7 @@ namespace Arrest.Internals {
       return string.Format(template, sArgs);
     }
 
-    public static string FormatAsUrlQuery(object value) {
+    public static string BuildUrlQuery(object value) {
       if (value == null)
         return string.Empty;
       var segments = new List<string>();
