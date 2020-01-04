@@ -32,9 +32,15 @@ namespace Arrest.TestService {
     }
 
     [HttpPut("items")]
-    public DataItem UpdateItem(DataItem item) {
+    public ObjectResult UpdateItem(DataItem item) {
+      // pretend that we do some validation and return BadRequest if data is invalid
+      if (item.SomeDate < new DateTime(1900, 1, 1)) {
+        var errors = new[] { new SoftError() { Code = "BadDate", Message = "Date is invalid." } };
+        return BadRequest(errors);
+      }
+      // success
       item.Version++;
-      return item;
+      return Ok(item);
     }
 
 

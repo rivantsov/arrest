@@ -21,8 +21,8 @@ namespace Arrest {
     public string ExplicitAcceptList; //sometimes needed to explicitly add certain variations returned by server
     public Encoding Encoding = Encoding.UTF8;
 
-    public readonly Type BadRequestContentType;
-    public readonly Type ServerErrorContentType;
+    public Type BadRequestContentType;
+    public Type ServerErrorContentType;
 
     public readonly RestClientEvents Events = new RestClientEvents(); 
 

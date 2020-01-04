@@ -1,14 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.421
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SyncAsyncTests", "SyncAsyncTests", "{AB33B011-E120-4659-AF8A-40C2B466213D}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCoreSyncAsyncTest", "SyncAsyncTests\AspNetCoreSyncAsyncTest\AspNetCoreSyncAsyncTest.csproj", "{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetSyncAsyncTest", "SyncAsyncTests\AspNetSyncAsyncTest\AspNetSyncAsyncTest.csproj", "{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2F3BD35A-D195-4A4B-BEBE-AE4A42C5DB4A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arrest", "Arrest\Arrest.csproj", "{57D0D15D-8E59-4ADB-AEE3-992692186E04}"
@@ -17,20 +11,27 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arrest.TestService", "Tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arrest.Tests", "Tests\Arrest.Tests\Arrest.Tests.csproj", "{1C67A847-1F48-4FE0-9ED2-7081D339B6B5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0D8B498A-A0B3-4BDB-A392-C5E9FF6CD643}"
+	ProjectSection(SolutionItems) = preProject
+		ReadMe.MD = ReadMe.MD
+		ReadMe_SyncAsyncDeadlock.txt = ReadMe_SyncAsyncDeadlock.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SyncAsyncDeadlockTests", "SyncAsyncDeadlockTests", "{55337A44-C49B-4FB6-9817-AB9B6E5A0B8B}"
+	ProjectSection(SolutionItems) = preProject
+		ReadMe_SyncAsyncDeadlock.txt = ReadMe_SyncAsyncDeadlock.txt
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspNetCoreSyncAsyncTest", "SyncAsyncDeadlockTests\AspNetCoreSyncAsyncTest\AspNetCoreSyncAsyncTest.csproj", "{083C9590-5D29-4A00-94D6-EF76AEFF5ECD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetSyncAsyncTest", "SyncAsyncDeadlockTests\AspNetSyncAsyncTest\AspNetSyncAsyncTest.csproj", "{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{57D0D15D-8E59-4ADB-AEE3-992692186E04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{57D0D15D-8E59-4ADB-AEE3-992692186E04}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{57D0D15D-8E59-4ADB-AEE3-992692186E04}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -43,15 +44,23 @@ Global
 		{1C67A847-1F48-4FE0-9ED2-7081D339B6B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C67A847-1F48-4FE0-9ED2-7081D339B6B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C67A847-1F48-4FE0-9ED2-7081D339B6B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{083C9590-5D29-4A00-94D6-EF76AEFF5ECD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{083C9590-5D29-4A00-94D6-EF76AEFF5ECD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{083C9590-5D29-4A00-94D6-EF76AEFF5ECD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{083C9590-5D29-4A00-94D6-EF76AEFF5ECD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{7B6E1F84-E2F3-4B43-A460-E2CF8ECF452A} = {AB33B011-E120-4659-AF8A-40C2B466213D}
-		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA} = {AB33B011-E120-4659-AF8A-40C2B466213D}
 		{8663EE47-16A5-4DB5-8D3A-9F2CDFB383C6} = {2F3BD35A-D195-4A4B-BEBE-AE4A42C5DB4A}
 		{1C67A847-1F48-4FE0-9ED2-7081D339B6B5} = {2F3BD35A-D195-4A4B-BEBE-AE4A42C5DB4A}
+		{083C9590-5D29-4A00-94D6-EF76AEFF5ECD} = {55337A44-C49B-4FB6-9817-AB9B6E5A0B8B}
+		{DA55DA25-A552-437F-8E2C-22D7F2BB02FA} = {55337A44-C49B-4FB6-9817-AB9B6E5A0B8B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3973571A-AC2C-432D-85A5-B76F32B8E400}

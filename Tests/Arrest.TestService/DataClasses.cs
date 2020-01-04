@@ -12,5 +12,9 @@ namespace Arrest.TestService {
     public int Version; //increments each time we update item
   }
 
+  public class SoftError {
+    public string Code;
+    public string Message;
+  }
 
 }

@@ -11,7 +11,8 @@ namespace Arrest.Tests {
 
   public static class Startup {
 
-    public const string ServiceUrl = "http://localhost:60285"; 
+    // using IP address instead of localhost to view traffic in Fiddler
+    public const string ServiceUrl = "http://127.0.0.1:60285"; 
 
     static IWebHost _webHost;
     public static void StartService() {

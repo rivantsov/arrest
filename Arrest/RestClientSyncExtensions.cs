@@ -30,11 +30,11 @@ namespace Arrest.Sync {
       return SyncAsync.RunSync(() => client.DeleteAsync(url, args));
     }
 
-    public static byte[] GetBinary(this RestClient client, string url, object[] args, string acceptMediaType = "application/octet-stream") {
+    public static byte[] GetBinary(this RestClient client, string url, object[] args = null, string acceptMediaType = "application/octet-stream") {
       return SyncAsync.RunSync(() => client.GetBinaryAsync(url, args, acceptMediaType));
     }
 
-    public static string GetString(this RestClient client, string url, object[] args, string acceptMediaType = "text/plain") {
+    public static string GetString(this RestClient client, string url, object[] args = null, string acceptMediaType = "text/plain") {
       return SyncAsync.RunSync(() => client.GetStringAsync(url, args, acceptMediaType));
     }
 
