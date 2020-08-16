@@ -14,3 +14,5 @@ Examples:
 The client handles HTTP status codes returned by the service (throws exceptions on BadRequest and Server errors).
 Supports Json and Xml content serialization. Supports sync and async operations. 
 See RestCallTests.cs class for examples of use. 
+
+
