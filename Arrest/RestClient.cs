@@ -9,7 +9,6 @@ using System.Net.Security;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.IO;
-using Arrest.Json;
 using Arrest.Internals;
 using System.Diagnostics;
 
@@ -33,31 +32,16 @@ namespace Arrest {
     public string ClientName;
     public readonly RestClientSettings Settings;
     public readonly HttpClient HttpClient;
-    public CancellationToken CancellationToken;
-    public readonly object AppContext;
     public HttpRequestHeaders DefaultRequestHeaders => HttpClient.DefaultRequestHeaders;
-
 
     #region constructors
 
-    public RestClient(string baseUrl, object appContext = null,
-                     CancellationToken? cancellationToken = null,
-                     JsonNameMapping nameMapping = JsonNameMapping.Default, 
-                     Type badRequestContentType = null)
-      : this(new RestClientSettings(baseUrl, new JsonContentSerializer(nameMapping), badRequestContentType: badRequestContentType),
-            appContext: appContext) { }
+    public RestClient(string baseUrl, HttpClient httpClient = null)
+      : this(new RestClientSettings(baseUrl), httpClient) { }
 
-    public RestClient(RestClientSettings settings, string clientName = null, object appContext = null, 
-                 CancellationToken? cancellationToken = null, HttpClient httpClient = null) {
+    public RestClient(RestClientSettings settings, HttpClient httpClient = null) {
       RestClientSettings.Validate(settings); 
       Settings = settings;
-      AppContext = appContext;
-      ClientName =  clientName;
-      if (cancellationToken.HasValue)
-        CancellationToken = cancellationToken.Value;
-      // In Web environment (Asp.NET core) the HttpClient should be created using IHttpClientFactory
-      //  https://docs.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-2.2
-      //  In this case create client through this factory and pass it here
 
       if (httpClient != null) {
         this.HttpClient = httpClient;
@@ -134,7 +118,7 @@ namespace Arrest {
     public string FormatUrl(string template, params object[] args) {
       if (string.IsNullOrWhiteSpace(template))
         return Settings.ServiceUrl;
-      var url = RestClientHelper.FormatUrl(template, args);
+      var url = RestUtility.FormatUrl(template, args);
       string fullUrl;
       //Check if template is abs URL
       if (url.StartsWith("http://") || template.StartsWith("https://"))
@@ -155,7 +139,7 @@ namespace Arrest {
     /// <param name="queryParams">Query parameters object.</param>
     /// <returns>Constructed query part.</returns>
     public string BuildUrlQuery(object queryParams) {
-      return RestClientHelper.BuildUrlQuery(queryParams); 
+      return RestUtility.BuildUrlQueryFromObject(queryParams); 
     }
 
     #endregion
@@ -169,24 +153,24 @@ namespace Arrest {
     #region private methods
 
     private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] urlParameters,
-                        TBody body, string acceptMediaType = null) {
-      var start = GetTimestamp();
+                        TBody body, string acceptMediaType = null, CancellationToken token = default) {
+      var start = RestUtility.GetTimestamp();
       var callData = new RestCallData() {
-        StartedAtUtc = RestClientHelper.GetUtc(),
+        StartedAtUtc = RestUtility.GetUtc(),
         HttpMethod = method,
         UrlTemplate = urlTemplate,
         UrlParameters = urlParameters,
         Url = FormatUrl(urlTemplate, urlParameters),
         RequestBodyType = typeof(TBody),
         ResponseBodyType = typeof(TResult),
+        ReturnValueKind = RestUtility.GetReturnValueKind(typeof(TResult)),
         RequestBodyObject = body,
-        AcceptMediaType = acceptMediaType ?? Settings.ExplicitAcceptList ?? Settings.Serializer.ContentTypes,
       };
 
       // Create RequestMessage, setup headers, serialize body
       callData.Request = new HttpRequestMessage(callData.HttpMethod, callData.Url);
       var headers = callData.Request.Headers;
-      headers.Add("accept", callData.AcceptMediaType);
+      headers.Add("accept", this.Settings.AcceptContentTypes);
       foreach (var kv in this.DefaultRequestHeaders)
         headers.Add(kv.Key, kv.Value);
       BuildHttpRequestContent(callData);
@@ -194,8 +178,8 @@ namespace Arrest {
       Settings.Events.OnSendingRequest(this, callData);
 
       //actually make a call
-      callData.Response = await HttpClient.SendAsync(callData.Request, this.CancellationToken);
-      callData.TimeElapsed = GetTimeSince(start); //measure time in case we are about to cancel and throw
+      callData.Response = await HttpClient.SendAsync(callData.Request, token);
+      callData.TimeElapsed = RestUtility.GetTimeSince(start); //measure time in case we are about to cancel and throw
 
       //check error
       if (callData.Response.IsSuccessStatusCode) {
@@ -206,11 +190,11 @@ namespace Arrest {
         Settings.Events.OnReceivedError(this, callData);
       }
       // get time again to include deserialization time
-      callData.TimeElapsed = GetTimeSince(start);
+      callData.TimeElapsed = RestUtility.GetTimeSince(start);
       // Log
       // args: operationContext, clientName, urlTemplate, urlArgs, request, response, requestBody, responseBody, timeMs, exc 
       var timeMs = (int) callData.TimeElapsed.TotalMilliseconds;
-      Settings.LogAction?.Invoke(this.AppContext, this.ClientName, callData.UrlTemplate, callData.UrlParameters,
+      Settings.LogAction?.Invoke(callData.UrlTemplate, callData.UrlParameters,
                             callData.Request, callData.Response, callData.RequestBodyString, callData.ResponseBodyString,
                             timeMs, callData.Exception);
       Settings.Events.OnCompleted(this, callData);
@@ -222,9 +206,8 @@ namespace Arrest {
     private async Task ReadResponseBodyAsync(RestCallData callData) {
       var content = callData.Response.Content;
       // check response body kind
-      var returnValueKind = GetReturnValueKind(callData.ResponseBodyType);
       callData.ResponseBodyString = "(not set)";
-      switch (returnValueKind) {
+      switch (callData.ReturnValueKind) {
         case ReturnValueKind.None:
           return;
         case ReturnValueKind.HttpResponseMessage:
@@ -244,7 +227,8 @@ namespace Arrest {
           // read as string and then deserialize
           callData.ResponseBodyString = await content.ReadAsStringAsync();
           if (!string.IsNullOrEmpty(callData.ResponseBodyString))
-            callData.ResponseBodyObject = Settings.Serializer.Deserialize(callData.ResponseBodyType, callData.ResponseBodyString);
+            callData.ResponseBodyObject = Settings.Serializer.Deserialize(
+                 callData.ResponseBodyString, callData.ResponseBodyType);
           return;
       }// switch
     }
@@ -260,58 +244,12 @@ namespace Arrest {
         var stream = (Stream)body;
         request.Request.Content = new StreamContent(stream);
       } else {
-        var strContent = Settings.Serializer.Serialize(body);
-        request.Request.Content = new StringContent(strContent, this.Settings.Encoding, GetRequestMediaType());
+        var json = Settings.Serializer.Serialize(body);
+        request.Request.Content = new StringContent(json, this.Settings.Encoding, this.Settings.OutputContentType);
       }
     }
 
-    private string GetRequestMediaType() {
-      var serMediaType = Settings.Serializer.ContentTypes;
-      if (!serMediaType.Contains(','))
-        return serMediaType;
-      // there are multiple media types, grab the first one
-      return serMediaType.Split(',')[0];
-    }
-
     #endregion
 
-    #region private utilities
-
-    public enum ReturnValueKind {
-      None,
-      Object,
-      HttpResponseMessage,
-      HttpStatusCode,
-      HttpContent,
-      Stream,
-    }
-
-    private static ReturnValueKind GetReturnValueKind(Type type) {
-      if (type == typeof(DBNull))
-        return ReturnValueKind.None;
-      if (type == typeof(HttpResponseMessage))
-        return ReturnValueKind.HttpResponseMessage;
-      if (type == typeof(HttpStatusCode))
-        return ReturnValueKind.HttpStatusCode;
-      if (type == typeof(HttpContent))
-        return ReturnValueKind.HttpContent;
-      if (typeof(System.IO.Stream).IsAssignableFrom(type))
-        return ReturnValueKind.Stream;
-      return ReturnValueKind.Object;
-    }
-
-    private static long GetTimestamp() {
-      return Stopwatch.GetTimestamp();
-    }
-
-    private static TimeSpan GetTimeSince(long start) {
-      var now = Stopwatch.GetTimestamp();
-      var time = TimeSpan.FromMilliseconds((now - start) * 1000 / Stopwatch.Frequency);
-      return time;
-    }
-
-
-
-    #endregion
   }//class
 }

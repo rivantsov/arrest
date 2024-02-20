@@ -5,41 +5,36 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Arrest.Internals;
-using Arrest.Json;
 
 namespace Arrest {
-  // args: operationContext, clientName, urlTemplate, urlArgs, callData, response, requestBody, responseBody, timeMs, exc 
-  using RestClientLogAction = Action<object, string, string, object[], HttpRequestMessage, HttpResponseMessage, object, object, int, Exception>;
+  // args: urlTemplate, urlArgs, response, requestBody, responseBody, timeMs, exc 
+  using RestClientLogAction = Action<string, object[], HttpRequestMessage, HttpResponseMessage, object, object, int, Exception>;
 
-  public delegate void ApiLogger(object context, string clientName, HttpRequestMessage callData, string requestBody,
+  public delegate void ApiLogger(string clientName, HttpRequestMessage callData, string requestBody,
            HttpResponseMessage response, string responseBody, int timeMs); 
 
 
   public class RestClientSettings {
     public string ServiceUrl;
     public readonly IContentSerializer Serializer;
-    public string ExplicitAcceptList; //sometimes needed to explicitly add certain variations returned by server
     public Encoding Encoding = Encoding.UTF8;
 
-    public Type BadRequestContentType;
-    public Type ServerErrorContentType;
+    // Some APIs follow this draft for errors in REST APIs: https://tools.ietf.org/html/draft-nottingham-http-problem-07
+    // So returned error is JSon but content type is problem+json
+    public string AcceptContentTypes = "application/json, application/problem+json";
+    public string OutputContentType = "application/json";
 
     public readonly RestClientEvents Events = new RestClientEvents(); 
-
     public RestClientLogAction LogAction;
 
 
-    public RestClientSettings(string serviceUrl,
-          IContentSerializer serializer = null, string explicitAcceptList = null, RestClientLogAction log = null,
+    public RestClientSettings(string serviceUrl, IContentSerializer serializer = null, RestClientLogAction log = null,
           Type badRequestContentType = null, Type serverErrorContentType = null) {
       if(serviceUrl != null && serviceUrl.EndsWith("/"))
         serviceUrl = serviceUrl.Substring(0, serviceUrl.Length - 1);
       ServiceUrl = serviceUrl;
       Serializer = serializer ?? new JsonContentSerializer();
-      ExplicitAcceptList = explicitAcceptList ?? Serializer.ContentTypes; 
       LogAction = log;
-      ServerErrorContentType = serverErrorContentType ?? typeof(string);
-      BadRequestContentType = badRequestContentType ?? ServerErrorContentType;
     }
 
     #region Validation

@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Text;
 
 namespace Arrest.Internals {
-  public static class RestClientHelper {
+  public static class RestUtility {
 
     // Replace with AppTime.UtcNow or any facility that provides testable environment. 
     public static Func<DateTime> GetUtc = () => DateTime.UtcNow;
@@ -26,7 +26,7 @@ namespace Arrest.Internals {
       return string.Format(template, sArgs);
     }
 
-    public static string BuildUrlQuery(object value) {
+    public static string BuildUrlQueryFromObject(object value) {
       if (value == null)
         return string.Empty;
       var segments = new List<string>();
@@ -43,6 +43,16 @@ namespace Arrest.Internals {
       return string.Join("&", segments);
     }
 
+    public static string FormatForUrl(object value) {
+      // convert using invariant culture
+      var str = Convert.ToString(value, CultureInfo.InvariantCulture);
+      return EscapeForUrl(str);
+    }
+
+    public static string EscapeForUrl(string value) {
+      return string.IsNullOrEmpty(value) ? string.Empty : Uri.EscapeDataString(value);
+    }
+
     private static object GetValue(this MemberInfo member, object instance) {
       switch (member) {
         case FieldInfo f:  return f.GetValue(instance);
@@ -51,15 +61,30 @@ namespace Arrest.Internals {
       }
     }
 
-    private static string FormatForUrl(object value) {
-      // convert using invariant culture
-      var str = Convert.ToString(value, CultureInfo.InvariantCulture);
-      return EscapeForUrl(str); 
+    internal static ReturnValueKind GetReturnValueKind(Type type) {
+      if (type == typeof(DBNull))
+        return ReturnValueKind.None;
+      if (type == typeof(HttpResponseMessage))
+        return ReturnValueKind.HttpResponseMessage;
+      if (type == typeof(HttpStatusCode))
+        return ReturnValueKind.HttpStatusCode;
+      if (type == typeof(HttpContent))
+        return ReturnValueKind.HttpContent;
+      if (typeof(System.IO.Stream).IsAssignableFrom(type))
+        return ReturnValueKind.Stream;
+      return ReturnValueKind.Object;
     }
 
-    public static string EscapeForUrl(string value) {
-      return string.IsNullOrEmpty(value) ? string.Empty : Uri.EscapeDataString(value);
+    internal static long GetTimestamp() {
+      return Stopwatch.GetTimestamp();
     }
+
+    internal static TimeSpan GetTimeSince(long start) {
+      var now = Stopwatch.GetTimestamp();
+      var time = TimeSpan.FromMilliseconds((now - start) * 1000 / Stopwatch.Frequency);
+      return time;
+    }
+
 
 
   }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Arrest.TestService {
+namespace Arrest.Tests {
 
   [Route("api/testdata")]
   [ApiController]
@@ -35,8 +35,7 @@ namespace Arrest.TestService {
     public ObjectResult UpdateItem(DataItem item) {
       // pretend that we do some validation and return BadRequest if data is invalid
       if (item.SomeDate < new DateTime(1900, 1, 1)) {
-        var errors = new[] { new SoftError() { Code = "BadDate", Message = "Date is invalid." } };
-        return BadRequest(errors);
+        return BadRequest("Date is invalid");
       }
       // success
       item.Version++;

@@ -6,6 +6,16 @@ using System.Text;
 
 namespace Arrest.Internals {
 
+  public enum ReturnValueKind {
+    None,
+    Object,
+    HttpResponseMessage,
+    HttpStatusCode,
+    HttpContent,
+    Stream,
+  }
+
+
   public class RestCallData {
     public HttpMethod HttpMethod;
     public string UrlTemplate;
@@ -15,11 +25,11 @@ namespace Arrest.Internals {
     public Type RequestBodyType;
     public object RequestBodyObject;
     public string RequestBodyString;
-    public string AcceptMediaType;
 
     public Type ResponseBodyType;
     public object ResponseBodyObject;
     public string ResponseBodyString;
+    public ReturnValueKind ReturnValueKind;
 
     public DateTime StartedAtUtc;
     public TimeSpan TimeElapsed;
@@ -27,5 +37,7 @@ namespace Arrest.Internals {
 
     public HttpRequestMessage Request;
     public HttpResponseMessage Response;
+
+    internal RestCallData() { }
   }
 }

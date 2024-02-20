@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Arrest.TestService;
 using Arrest;
 using Arrest.Sync;
 using System.Diagnostics;
@@ -15,13 +14,12 @@ namespace Arrest.Tests {
 
     [TestInitialize]
     public void Init() {
-      Startup.StartService(); 
+      TestEnv.EnsureInitialized(); 
     }
 
     [TestMethod]
     public async Task TestRestClientAsync() {
-      var client = new RestClient(Startup.ServiceUrl + "/api/testdata");
-      client.Settings.BadRequestContentType = typeof(SoftError[]); 
+      var client = new RestClient(TestEnv.ServiceUrl + "/api/testdata");
 
       // Get many
       var items = await client.GetAsync<DataItem[]>("items");
@@ -50,10 +48,8 @@ namespace Arrest.Tests {
       try {
         newItemBack = await client.PutAsync<DataItem, DataItem>(newItemBack, "items");
         Assert.Fail("Expected BadRequest exception.");
-      } catch(BadRequestException brEx) {
-        var errs = brEx.Details as SoftError[];
-        Assert.IsNotNull(errs, "Expected array of soft errors.");
-        Assert.AreEqual("BadDate", errs[0].Code, "Expected BadDate error.");
+      } catch(BadRequestException) {
+        // this is successful catch, nothing to do
       }
 
       // get string as text
@@ -63,8 +59,7 @@ namespace Arrest.Tests {
 
     [TestMethod]
     public void TestRestClientSync() {
-      var client = new RestClient(Startup.ServiceUrl + "/api/testdata");
-      client.Settings.BadRequestContentType = typeof(SoftError[]);
+      var client = new RestClient(TestEnv.ServiceUrl + "/api/testdata");
 
       // Get many
       var items = client.Get<DataItem[]>("items");
@@ -93,10 +88,8 @@ namespace Arrest.Tests {
       try {
         newItemBack = client.Put<DataItem, DataItem>(newItemBack, "items");
         Assert.Fail("Expected BadRequest exception.");
-      } catch(BadRequestException brEx) {
-        var errs = brEx.Details as SoftError[];
-        Assert.IsNotNull(errs, "Expected array of soft errors.");
-        Assert.AreEqual("BadDate", errs[0].Code, "Expected BadDate error.");
+      } catch(BadRequestException) {
+        // this is successful catch, nothing to do
       }
 
       // get string as text
@@ -113,7 +106,7 @@ namespace Arrest.Tests {
          StrField = "a", StrProp = "b", IntField = 123
       };
       // Build Query part of URL from properties of an object (URL query is all after '?')
-      var query = RestClientHelper.BuildUrlQuery(queryParam);
+      var query = RestUtility.BuildUrlQueryFromObject(queryParam);
       Assert.AreEqual("StrProp=b&StrField=a&IntField=123", query); 
       Debug.WriteLine($"result: {query}");
     }
