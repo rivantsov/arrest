@@ -9,6 +9,8 @@ using Arrest.Internals;
 namespace Arrest {
 
   public class RestClientSettings {
+    /// <summary>Identifier of the client, written to log, to easier identify entries.</summary> 
+    public string ClientName;
     public string ServiceUrl;
     public readonly IContentSerializer Serializer;
     public Encoding Encoding = Encoding.UTF8;

@@ -26,15 +26,21 @@ namespace Arrest.Internals {
       return string.Format(template, sArgs);
     }
 
-    public static string BuildUrlQueryFromObject(object value) {
-      if (value == null)
+    /// <summary>
+    /// Formats the query part of URL from properties (fields) of an object (names and values).
+    /// Null-queryParams parameters are skipped. All values are URL-escaped. 
+    /// </summary>
+    /// <param name="queryParams">Query parameters object.</param>
+    /// <returns>Constructed query part.</returns>
+    public static string BuildUrlQueryFromObject(object queryParams) {
+      if (queryParams == null)
         return string.Empty;
       var segments = new List<string>();
-      var type = value.GetType();
+      var type = queryParams.GetType();
       var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetField | BindingFlags.GetProperty;
       var members = type.GetMembers(flags);
       foreach(var member in members) {
-        var pv = member.GetValue(value);
+        var pv = member.GetValue(queryParams);
         if (pv == null)
           continue;
         var pvStr = FormatForUrl(pv);

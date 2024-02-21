@@ -1,10 +1,6 @@
 using System;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Arrest;
-using Arrest.Sync;
 using System.Diagnostics;
-using System.Globalization;
+using System.Threading.Tasks;
 using Arrest.Internals;
 
 namespace Arrest.Tests {
