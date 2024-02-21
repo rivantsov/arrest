@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,9 +14,15 @@ namespace Arrest.Tests {
         return;
       _initialized = true;
 
+      // Start REST service
       var builder = WebApplication.CreateBuilder();
       builder.Services.AddControllers()
-                   .PartManager.ApplicationParts.Add(new AssemblyPart(typeof(TestDataController).Assembly));
+           // System.Text.Json does not serialize fields by default, we need to enable it explicitly
+           .AddJsonOptions(o => {
+             o.JsonSerializerOptions.IncludeFields = true;
+             o.JsonSerializerOptions.PropertyNamingPolicy = null; //disable name policy, prop names as-is
+           })
+           .PartManager.ApplicationParts.Add(new AssemblyPart(typeof(TestDataController).Assembly)); // to ensure it finds the controller
       builder.WebHost.UseUrls(ServiceUrl);
       var app = builder.Build();
       app.MapControllers();

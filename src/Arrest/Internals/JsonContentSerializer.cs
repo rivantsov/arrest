@@ -1,37 +1,25 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Net.Http.Headers;
-using System.Collections.ObjectModel;
 using System.Text.Json;
-using System.ComponentModel;
 using System.Text.Json.Serialization;
-using System.Threading;
 
-namespace Arrest  {
+namespace Arrest.Internals {
 
   public interface IContentSerializer {
     object Deserialize(string json, Type type);
     string Serialize(object value);
   }
 
-
-
   public class JsonContentSerializer : IContentSerializer {
     public JsonSerializerOptions Options;
 
     public JsonContentSerializer(JsonSerializerOptions options = null) {
-      if (options == null) {
-        options = new JsonSerializerOptions() {
-          IncludeFields = true, 
-          WriteIndented = true,          
+      this.Options = options; 
+      if (Options == null) {
+        Options = new JsonSerializerOptions() {
+          IncludeFields = true,
+          WriteIndented = true,
         };
-        options.Converters.Add(new JsonStringEnumConverter());
+        Options.Converters.Add(new JsonStringEnumConverter());
       }
     }
 

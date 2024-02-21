@@ -16,7 +16,6 @@ namespace Arrest.Internals {
              https://medium.com/rubrikkgroup/understanding-async-avoiding-deadlocks-e41f8f2c6f5d    
   According to the article, the best way to go is to use an extra foreground thread, and schedule wait there.          
   This is what the code here is implementing. 
-  I did test it under ASP.NET and ASP.NET core, and it works without deadlocks. 
    */
 
   /// <summary>
@@ -27,17 +26,25 @@ namespace Arrest.Internals {
     class AsyncJob<T> {
       public Func<Task<T>> JobFunc;
       public T Result;
-      public ManualResetEventSlim CompletedSignal;
+      public ManualResetEventSlim CompletedSignal = new ManualResetEventSlim(false);
       public Exception Exception;
+
+      public AsyncJob(Func<Task<T>> jobFunc) {
+        JobFunc = jobFunc;
+      }
     }
 
     public static TResult RunSync<TResult>(Func<Task<TResult>> func) {
-      var job = new AsyncJob<TResult>() { JobFunc = func, CompletedSignal = new ManualResetEventSlim(false) };
+      var job = new AsyncJob<TResult>(func);
       var thread = new Thread(ExecuteJob<TResult>);
       thread.Start(job);
       job.CompletedSignal.Wait();
-      if (job.Exception != null)
+      if (job.Exception != null) {
+        var aggrExc = job.Exception as AggregateException;
+        if (aggrExc != null && aggrExc.InnerExceptions.Count == 1)
+          throw aggrExc.InnerExceptions[0];
         throw job.Exception;
+      }
       return job.Result;
     }
 

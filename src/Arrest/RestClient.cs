@@ -33,6 +33,7 @@ namespace Arrest {
     public readonly RestClientSettings Settings;
     public readonly HttpClient HttpClient;
     public HttpRequestHeaders DefaultRequestHeaders => HttpClient.DefaultRequestHeaders;
+    public readonly RestClientEvents Events = new RestClientEvents();
 
     #region constructors
 
@@ -95,9 +96,9 @@ namespace Arrest {
     }
 
     public async Task<string> GetStringAsync(string url, object[] args = null, string acceptMediaType = "text/plain") {
-      var resultContent = await SendAsyncImpl<object, HttpContent>(HttpMethod.Get, url, args, 
+      var content = await SendAsyncImpl<object, HttpContent>(HttpMethod.Get, url, args, 
                             null, acceptMediaType: acceptMediaType);
-      var result = await resultContent.ReadAsStringAsync();
+      var result = await content.ReadAsStringAsync();
       return result;
     }
 
@@ -170,12 +171,12 @@ namespace Arrest {
       // Create RequestMessage, setup headers, serialize body
       callData.Request = new HttpRequestMessage(callData.HttpMethod, callData.Url);
       var headers = callData.Request.Headers;
-      headers.Add("accept", this.Settings.AcceptContentTypes);
+      headers.Add("accept", acceptMediaType ?? this.Settings.AcceptContentTypes);
       foreach (var kv in this.DefaultRequestHeaders)
         headers.Add(kv.Key, kv.Value);
       BuildHttpRequestContent(callData);
 
-      Settings.Events.OnSendingRequest(this, callData);
+      this.Events.OnSendingRequest(this, callData);
 
       //actually make a call
       callData.Response = await HttpClient.SendAsync(callData.Request, token);
@@ -183,21 +184,18 @@ namespace Arrest {
 
       //check error
       if (callData.Response.IsSuccessStatusCode) {
-        Settings.Events.OnReceivedResponse(this, callData);
-        await ReadResponseBodyAsync(callData).ConfigureAwait(false);
+        this.Events.OnReceivedResponse(this, callData);
+        await ReadResponseBodyAsync(callData);
       } else {
         callData.Exception = await this.ReadErrorResponseAsync(callData);
-        Settings.Events.OnReceivedError(this, callData);
+        this.Events.OnReceivedError(this, callData);
       }
       // get time again to include deserialization time
       callData.TimeElapsed = RestUtility.GetTimeSince(start);
       // Log
       // args: operationContext, clientName, urlTemplate, urlArgs, request, response, requestBody, responseBody, timeMs, exc 
       var timeMs = (int) callData.TimeElapsed.TotalMilliseconds;
-      Settings.LogAction?.Invoke(callData.UrlTemplate, callData.UrlParameters,
-                            callData.Request, callData.Response, callData.RequestBodyString, callData.ResponseBodyString,
-                            timeMs, callData.Exception);
-      Settings.Events.OnCompleted(this, callData);
+      this.Events.OnCompleted(this, callData);
       if (callData.Exception != null)
         throw callData.Exception;
       return (TResult)callData.ResponseBodyObject;
@@ -248,6 +246,20 @@ namespace Arrest {
         request.Request.Content = new StringContent(json, this.Settings.Encoding, this.Settings.OutputContentType);
       }
     }
+
+    internal virtual async Task<Exception> ReadErrorResponseAsync(RestCallData callData) {
+      string details = null;
+      try {
+        details = await callData.Response.Content.ReadAsStringAsync();
+      } catch (Exception exc) {
+        details = $"(failed to read content: {exc.Message} )";
+      }
+      if (callData.Response.StatusCode == HttpStatusCode.BadRequest)
+        return new BadRequestException(details);
+      else
+        return new RestException(details, callData.Response.StatusCode);
+    }
+
 
     #endregion
 

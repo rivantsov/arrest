@@ -7,12 +7,6 @@ using System.Threading.Tasks;
 using Arrest.Internals;
 
 namespace Arrest {
-  // args: urlTemplate, urlArgs, response, requestBody, responseBody, timeMs, exc 
-  using RestClientLogAction = Action<string, object[], HttpRequestMessage, HttpResponseMessage, object, object, int, Exception>;
-
-  public delegate void ApiLogger(string clientName, HttpRequestMessage callData, string requestBody,
-           HttpResponseMessage response, string responseBody, int timeMs); 
-
 
   public class RestClientSettings {
     public string ServiceUrl;
@@ -24,17 +18,12 @@ namespace Arrest {
     public string AcceptContentTypes = "application/json, application/problem+json";
     public string OutputContentType = "application/json";
 
-    public readonly RestClientEvents Events = new RestClientEvents(); 
-    public RestClientLogAction LogAction;
 
-
-    public RestClientSettings(string serviceUrl, IContentSerializer serializer = null, RestClientLogAction log = null,
-          Type badRequestContentType = null, Type serverErrorContentType = null) {
+    public RestClientSettings(string serviceUrl, IContentSerializer serializer = null) {
       if(serviceUrl != null && serviceUrl.EndsWith("/"))
         serviceUrl = serviceUrl.Substring(0, serviceUrl.Length - 1);
       ServiceUrl = serviceUrl;
       Serializer = serializer ?? new JsonContentSerializer();
-      LogAction = log;
     }
 
     #region Validation
