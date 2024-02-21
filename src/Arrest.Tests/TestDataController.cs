@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 
 namespace Arrest.Tests {
 
@@ -42,10 +44,21 @@ namespace Arrest.Tests {
       return Ok(item);
     }
 
-
     [HttpGet("stringvalue")]
     public string GetStringValue() {
       return "This is string"; 
+    }
+
+    [HttpGet("echocorrelationid")]
+    public string EchoCorelationId() {
+      const string CorHeaderName = "X-CorrelationId";
+      var headers = this.HttpContext.Request.Headers;
+      headers.TryGetValue(CorHeaderName, out var sv);
+      var corId = sv.ToString();
+      // return corr Id as result, and also in response header
+      var outHeaders = this.HttpContext.Response.Headers;
+      outHeaders.TryAdd(CorHeaderName, new StringValues(corId));
+      return corId;
     }
 
 

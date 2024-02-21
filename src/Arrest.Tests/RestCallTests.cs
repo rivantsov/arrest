@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Arrest.Internals;
 
@@ -92,8 +94,6 @@ namespace Arrest.Tests {
       Assert.AreEqual("This is string", str);
     }
 
-
-
     // Demonstrates/tests building URL query part from properties of an object (search parameters)
     [TestMethod]
     public void TestBuildUrlQuery() {
@@ -119,13 +119,21 @@ namespace Arrest.Tests {
     }
 
     [TestMethod]
-    public async Task TestDynamicHeaders() {
-      // we are testing extra headers that are provided to a single call; for example X-Correlation-Id header. 
+    public async Task TestSpecialArguments() {
+      // we are testing custom headers that are provided to a single call; for example X-CorrelationId header.
+      // also cancellation token, and ResponseBox (to get response header)
+      const string HeaderName = "X-CorrelationId";
+      var tokenSource = new CancellationTokenSource();
+      var token = tokenSource.Token; 
+
       var client = new RestClient(TestEnv.ServiceUrl + "/api/testdata");
-      var corrId = "123";
-      var id = 5;
-      var item = await client.GetAsync<DataItem>("items/{0}", id, ("X-Correlation-Id", corrId));
-      Assert.AreEqual(id, item.Id);
+      var respBox = new ResponseBox(); 
+      var corrId = Guid.NewGuid().ToString();
+      
+      var corrIdBack = await client.GetAsync<string>("echocorrelationid", (HeaderName, corrId), respBox, token);
+      Assert.AreEqual(corrId, corrIdBack); //returned as function result
+      var respHeaderValue = respBox.GetResponseHeader(HeaderName)?.FirstOrDefault();
+      Assert.AreEqual(corrId, respHeaderValue);
     }
 
   }

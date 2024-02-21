@@ -17,8 +17,8 @@ namespace Arrest {
 
     // Some APIs follow this draft for errors in REST APIs: https://tools.ietf.org/html/draft-nottingham-http-problem-07
     // So returned error is JSon but content type is problem+json
-    public string AcceptContentTypes = "application/json, application/problem+json";
-    public string OutputContentType = "application/json";
+    public string AcceptMediaTypes = "application/json, application/problem+json";
+    public string DefaultSendMediaType = "application/json";
 
 
     public RestClientSettings(string serviceUrl, IContentSerializer serializer = null) {

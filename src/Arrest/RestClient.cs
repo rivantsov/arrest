@@ -70,14 +70,14 @@ namespace Arrest {
     }
 
     public async Task<byte[]> GetBinaryAsync(string url, object[] args = null, string acceptMediaType = "application/octet-stream") {
-      var resultContent = await SendAsyncImpl<DBNull, HttpContent>(HttpMethod.Get, url, args, null, acceptMediaType: acceptMediaType);
+      var resultContent = await SendAsyncImpl<DBNull, HttpContent>(HttpMethod.Get, url, args, null, acceptMediaTypes: acceptMediaType);
       var result = await resultContent.ReadAsByteArrayAsync();
       return result;
     }
 
     public async Task<string> GetStringAsync(string url, object[] args = null, string acceptMediaType = "text/plain") {
       var content = await SendAsyncImpl<object, HttpContent>(HttpMethod.Get, url, args,
-                            null, acceptMediaType: acceptMediaType);
+                            null, acceptMediaTypes: acceptMediaType);
       var result = await content.ReadAsStringAsync();
       return result;
     }

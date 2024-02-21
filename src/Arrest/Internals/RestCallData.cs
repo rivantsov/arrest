@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 
 namespace Arrest.Internals {
+  using HeaderTuple = ValueTuple<string, string>;
 
   public enum ReturnValueKind {
     None,
@@ -17,9 +19,10 @@ namespace Arrest.Internals {
 
 
   public class RestCallData {
+
     public HttpMethod HttpMethod;
     public string UrlTemplate;
-    public object[] UrlParameters;
+    public List<object> UrlParameters = new List<object>();
     public string Url; 
 
     public Type RequestBodyType;
@@ -37,6 +40,12 @@ namespace Arrest.Internals {
 
     public HttpRequestMessage Request;
     public HttpResponseMessage Response;
+
+    // unpacked from args
+    public CancellationToken CancellationToken;
+    public string AcceptMedaTypes;
+    public List<HeaderTuple> DynamicHeaders = new List<HeaderTuple>();
+    public ResponseBox ResponseBox; 
 
     internal RestCallData() { }
   }

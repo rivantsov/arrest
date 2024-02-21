@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 
-namespace Arrest.Internals {
+namespace Arrest {
   public static class RestUtility {
 
     // Replace with AppTime.UtcNow or any facility that provides testable environment. 
@@ -65,20 +65,6 @@ namespace Arrest.Internals {
         case PropertyInfo p: return p.GetValue(instance);
         default: return null; 
       }
-    }
-
-    internal static ReturnValueKind GetReturnValueKind(Type type) {
-      if (type == typeof(DBNull))
-        return ReturnValueKind.None;
-      if (type == typeof(HttpResponseMessage))
-        return ReturnValueKind.HttpResponseMessage;
-      if (type == typeof(HttpStatusCode))
-        return ReturnValueKind.HttpStatusCode;
-      if (type == typeof(HttpContent))
-        return ReturnValueKind.HttpContent;
-      if (typeof(System.IO.Stream).IsAssignableFrom(type))
-        return ReturnValueKind.Stream;
-      return ReturnValueKind.Object;
     }
 
     internal static long GetTimestamp() {

@@ -15,4 +15,20 @@ The client handles HTTP status codes returned by the service (throws exceptions 
 Supports Json serialization. Supports sync and async operations. 
 See RestCallTests.cs class for examples of use. 
 
+You can pass additional request headers, and CancellationToken: 
+```c#
+  var someBook = await client.GetAsync<Book>("api/book/{0}", 123, ("X-Cor-Id", CorId), token);
+  
+```
+
+You can get response headers and other information about response:
+```c#
+  var respBox = new ResponseBox(); 
+  var someBook = await client.GetAsync<Book>("api/book/{0}", 123, ("X-Cor-Id", CorId), respBox);
+  var respHeader = respBox.GetResponseHeader("X-Cor-Id")?.FirstOrDefault();
+  
+  var respMessage = respBox.Response;
+  
+```
+
 

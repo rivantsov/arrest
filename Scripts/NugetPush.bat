@@ -1,4 +1,4 @@
-SET pver=1.4.0
+SET pver=2.0.0
 Echo Version: "%pver%"
 dir ..\Arrest\bin\Release\*.%pver%.nupkg
 @echo off

@@ -29,7 +29,6 @@ namespace Arrest {
     #endregion 
 
 
-    #region  URL formatting helpers
     /// <summary>
     /// Formats URL from a template with standard numeric placeholders, ex: {0}. All argument values 
     /// are URL-escaped. The returned URL is full URL, starting with base service address. 
@@ -37,10 +36,10 @@ namespace Arrest {
     /// <param name="template">URL template, not including base service part.</param>
     /// <param name="args">Arguments to insert into the template.</param>
     /// <returns>Full formatted URL.</returns>
-    public string GetFullUrl(string template, params object[] args) {
+    public string GetFullUrl(string template, IList<object> args) {
       if (string.IsNullOrWhiteSpace(template))
         return Settings.ServiceUrl;
-      var url = RestUtility.FormatUrl(template, args);
+      var url = RestUtility.FormatUrl(template, args.ToArray());
       string fullUrl;
       //Check if template is abs URL
       if (url.StartsWith("http://") || template.StartsWith("https://"))
@@ -54,38 +53,41 @@ namespace Arrest {
       return fullUrl;
     }
 
-    #endregion
-
-
-    #region private methods
-
-    private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] urlParameters,
-                        TBody body, string acceptMediaType = null, CancellationToken token = default) {
+    private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] args,
+                        TBody body, string acceptMediaTypes = null) {
       var start = RestUtility.GetTimestamp();
+      // Prepare callData
       var callData = new RestCallData() {
         StartedAtUtc = RestUtility.GetUtc(),
         HttpMethod = method,
         UrlTemplate = urlTemplate,
-        UrlParameters = urlParameters,
-        Url = GetFullUrl(urlTemplate, urlParameters),
+        Url = urlTemplate, // default, in case no args
+        AcceptMedaTypes = acceptMediaTypes ?? this.Settings.AcceptMediaTypes,
         RequestBodyType = typeof(TBody),
         ResponseBodyType = typeof(TResult),
-        ReturnValueKind = RestUtility.GetReturnValueKind(typeof(TResult)),
+        ReturnValueKind = GetReturnValueKind(typeof(TResult)),
         RequestBodyObject = body,
       };
+      // Preprocess args - separate UrlTemplate args from otheres: headers, cancelToken, ResponseBox
+      PreprocessArgs(callData, args);
+      callData.Url = GetFullUrl(callData.UrlTemplate, callData.UrlParameters);
 
       // Create RequestMessage, setup headers, serialize body
       callData.Request = new HttpRequestMessage(callData.HttpMethod, callData.Url);
       var headers = callData.Request.Headers;
-      headers.Add("accept", acceptMediaType ?? this.Settings.AcceptContentTypes);
+      headers.Add("accept", callData.AcceptMedaTypes);
       foreach (var kv in this.DefaultRequestHeaders)
         headers.Add(kv.Key, kv.Value);
+      // dynamic headers
+      foreach (var tpl in callData.DynamicHeaders)
+        headers.Add(tpl.Item1, tpl.Item2);
       BuildHttpRequestContent(callData);
+
 
       this.Events.OnSendingRequest(this, callData);
 
       //actually make a call
-      callData.Response = await HttpClient.SendAsync(callData.Request, token);
+      callData.Response = await HttpClient.SendAsync(callData.Request, callData.CancellationToken);
       callData.TimeElapsed = RestUtility.GetTimeSince(start); //measure time in case we are about to cancel and throw
 
       //check error
@@ -106,6 +108,34 @@ namespace Arrest {
         throw callData.Exception;
       return (TResult)callData.ResponseBodyObject;
     }//method
+
+    private void PreprocessArgs(RestCallData callData, object[] args) {
+      if (args == null || args.Length == 0)
+        return;
+      foreach(var arg in args) {
+        switch(arg) {
+          case null:
+            callData.UrlParameters.Add(null);
+            break;
+          case CancellationToken tkn:
+            callData.CancellationToken = tkn;
+            break;
+          case AcceptMediaType mt:
+            callData.AcceptMedaTypes = mt.MediaType;
+            break;
+          case ResponseBox rb:
+            callData.ResponseBox = rb;
+            rb.CallData = callData; 
+            break;
+          case ValueTuple<string, string> hdr:
+            callData.DynamicHeaders.Add(hdr);
+            break; 
+          default:
+            callData.UrlParameters.Add(arg);
+            break; 
+        }
+      }
+    }
 
     private async Task ReadResponseBodyAsync(RestCallData callData) {
       var content = callData.Response.Content;
@@ -149,7 +179,7 @@ namespace Arrest {
         request.Request.Content = new StreamContent(stream);
       } else {
         var json = Settings.Serializer.Serialize(body);
-        request.Request.Content = new StringContent(json, this.Settings.Encoding, this.Settings.OutputContentType);
+        request.Request.Content = new StringContent(json, this.Settings.Encoding, this.Settings.DefaultSendMediaType);
       }
     }
 
@@ -166,8 +196,19 @@ namespace Arrest {
         return new RestException(details, callData.Response.StatusCode);
     }
 
-
-    #endregion
+    private static ReturnValueKind GetReturnValueKind(Type type) {
+      if (type == typeof(DBNull))
+        return ReturnValueKind.None;
+      if (type == typeof(HttpResponseMessage))
+        return ReturnValueKind.HttpResponseMessage;
+      if (type == typeof(HttpStatusCode))
+        return ReturnValueKind.HttpStatusCode;
+      if (type == typeof(HttpContent))
+        return ReturnValueKind.HttpContent;
+      if (typeof(System.IO.Stream).IsAssignableFrom(type))
+        return ReturnValueKind.Stream;
+      return ReturnValueKind.Object;
+    }
 
   }//class
 }
