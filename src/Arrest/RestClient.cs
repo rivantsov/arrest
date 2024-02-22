@@ -69,15 +69,15 @@ namespace Arrest {
       return SendAsyncImpl<DBNull, HttpStatusCode>(HttpMethod.Delete, url, args, null);
     }
 
-    public async Task<byte[]> GetBinaryAsync(string url, object[] args = null, string acceptMediaType = "application/octet-stream") {
-      var resultContent = await SendAsyncImpl<DBNull, HttpContent>(HttpMethod.Get, url, args, null, acceptMediaTypes: acceptMediaType);
+    public async Task<byte[]> GetBinaryAsync(string url, params object[] args) {
+      var resultContent = await SendAsyncImpl<DBNull, HttpContent>(HttpMethod.Get, url, args, null, acceptMediaTypes: "application/octet-stream");
       var result = await resultContent.ReadAsByteArrayAsync();
       return result;
     }
 
-    public async Task<string> GetStringAsync(string url, object[] args = null, string acceptMediaType = "text/plain") {
+    public async Task<string> GetStringAsync(string url, params object[] args) {
       var content = await SendAsyncImpl<object, HttpContent>(HttpMethod.Get, url, args,
-                            null, acceptMediaTypes: acceptMediaType);
+                            null, acceptMediaTypes: "text/plain");
       var result = await content.ReadAsStringAsync();
       return result;
     }
@@ -110,12 +110,12 @@ namespace Arrest {
       return SyncAsync.RunSync(() => this.DeleteAsync(url, args));
     }
 
-    public byte[] GetBinary(string url, object[] args = null, string acceptMediaType = "application/octet-stream") {
-      return SyncAsync.RunSync(() => this.GetBinaryAsync(url, args, acceptMediaType));
+    public byte[] GetBinary(string url, params object[] args) {
+      return SyncAsync.RunSync(() => this.GetBinaryAsync(url, args));
     }
 
-    public string GetString(string url, object[] args = null, string acceptMediaType = "text/plain") {
-      return SyncAsync.RunSync(() => this.GetStringAsync(url, args, acceptMediaType));
+    public string GetString(string url, params object[] args) {
+      return SyncAsync.RunSync(() => this.GetStringAsync(url, args));
     }
 
 
