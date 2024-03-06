@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Arrest.Internals;
 
@@ -21,11 +22,12 @@ namespace Arrest {
     public string DefaultSendMediaType = "application/json";
 
 
-    public RestClientSettings(string serviceUrl, IContentSerializer serializer = null) {
+    public RestClientSettings(string serviceUrl, JsonSerializerOptions jsonOptions = null, IContentSerializer serializer = null) {
       if(serviceUrl != null && serviceUrl.EndsWith("/"))
         serviceUrl = serviceUrl.Substring(0, serviceUrl.Length - 1);
       ServiceUrl = serviceUrl;
-      Serializer = serializer ?? new JsonContentSerializer();
+      jsonOptions ??= RestClient.DefaultJsonOptions;
+      Serializer = serializer ?? new JsonContentSerializer(jsonOptions);
     }
 
     #region Validation

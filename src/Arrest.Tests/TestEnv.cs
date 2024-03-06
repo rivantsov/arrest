@@ -16,6 +16,13 @@ namespace Arrest.Tests {
 
       // Start REST service
       var builder = WebApplication.CreateBuilder();
+      // If we use controllers, we setup Json options thru AddControllers ..., see below
+      //builder.Services.ConfigureHttpJsonOptions(options =>
+      //{
+      //  options.SerializerOptions.PropertyNamingPolicy = null; // use property names unchanged
+      //  options.SerializerOptions.PropertyNameCaseInsensitive = true; 
+      //  options.SerializerOptions.IncludeFields = true;
+      //});
       builder.Services.AddControllers()
            // System.Text.Json does not serialize fields by default, we need to enable it explicitly
            .AddJsonOptions(o => {

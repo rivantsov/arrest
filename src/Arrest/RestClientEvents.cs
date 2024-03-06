@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Arrest.Internals;
 
-namespace Arrest.Internals {
+namespace Arrest {
 
   public class RestClientEventArgs : EventArgs {
     public readonly RestCallData CallData;

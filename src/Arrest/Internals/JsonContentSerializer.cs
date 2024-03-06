@@ -13,14 +13,7 @@ namespace Arrest.Internals {
     public JsonSerializerOptions Options;
 
     public JsonContentSerializer(JsonSerializerOptions options = null) {
-      this.Options = options; 
-      if (Options == null) {
-        Options = new JsonSerializerOptions() {
-          IncludeFields = true,
-          WriteIndented = true,
-        };
-        Options.Converters.Add(new JsonStringEnumConverter());
-      }
+      this.Options = options ?? RestClient.DefaultJsonOptions; 
     }
 
     public object Deserialize(string json, Type type) {

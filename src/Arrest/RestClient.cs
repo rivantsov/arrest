@@ -6,19 +6,34 @@ using System.Text;
 using Arrest.Internals;
 using System.Net;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Arrest {
   public partial class RestClient {
+    public static JsonSerializerOptions DefaultJsonOptions;
 
     public readonly RestClientSettings Settings;
     public readonly HttpClient HttpClient;
     public HttpRequestHeaders DefaultRequestHeaders => HttpClient.DefaultRequestHeaders;
     public readonly RestClientEvents Events = new RestClientEvents();
 
+    #region static constructor
+    static RestClient() {
+      DefaultJsonOptions = new JsonSerializerOptions {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = null, // remove camel-style policy
+        IncludeFields = true,
+      };
+      DefaultJsonOptions.Converters.Add(new JsonStringEnumConverter());
+    }
+    #endregion
+
+
     #region constructors
 
-    public RestClient(string baseUrl, HttpClient httpClient = null)
-      : this(new RestClientSettings(baseUrl), httpClient) { }
+    public RestClient(string baseUrl, HttpClient httpClient = null, JsonSerializerOptions jsonOptions = null)
+      : this(new RestClientSettings(baseUrl, jsonOptions), httpClient) { }
 
     public RestClient(RestClientSettings settings, HttpClient httpClient = null) {
       RestClientSettings.Validate(settings);
