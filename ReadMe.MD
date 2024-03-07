@@ -23,12 +23,14 @@ You can pass additional request headers, and CancellationToken:
 
 You can get response headers and other information about response:
 ```c#
-  var respBox = new ResponseBox(); 
-  var someBook = await client.GetAsync<Book>("api/book/{0}", 123, ("X-Cor-Id", CorId), respBox);
-  var respHeader = respBox.GetResponseHeader("X-Cor-Id")?.FirstOrDefault();
+  var contextBox = new ArgContextBox(); 
+  var someBook = await client.GetAsync<Book>("api/book/{0}", 123, ("X-Cor-Id", CorId), contextBox);
+  var respHeader = contextBox.GetResponseHeader("X-Cor-Id")?.FirstOrDefault();
   
-  var respMessage = respBox.Response;
+  var respMessage = contextBox.Response;
   
 ```
+
+REST client supports automatic retries - just pass a RetryPolicy instance to the constructor
 
 

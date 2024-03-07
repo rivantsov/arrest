@@ -18,7 +18,8 @@ namespace Arrest.Internals {
   }
 
 
-  public class RestCallData {
+  public class CallContext {
+    public int TryCount;
 
     public HttpMethod HttpMethod;
     public string UrlTemplate;
@@ -28,6 +29,7 @@ namespace Arrest.Internals {
     public Type RequestBodyType;
     public object RequestBodyObject;
     public string RequestBodyString;
+    public HttpContent RequestContent; 
 
     public Type ResponseBodyType;
     public object ResponseBodyObject;
@@ -35,6 +37,7 @@ namespace Arrest.Internals {
     public ReturnValueKind ReturnValueKind;
 
     public DateTime StartedAtUtc;
+    public long StartTimestamp;
     public TimeSpan TimeElapsed;
     public Exception Exception;
 
@@ -45,8 +48,8 @@ namespace Arrest.Internals {
     public CancellationToken CancellationToken;
     public string AcceptMedaTypes;
     public List<HeaderTuple> DynamicHeaders = new List<HeaderTuple>();
-    public ResponseBox ResponseBox; 
+    public ArgContextBox ResponseBox; 
 
-    internal RestCallData() { }
+    internal CallContext() { }
   }
 }

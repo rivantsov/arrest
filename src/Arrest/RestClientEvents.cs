@@ -6,9 +6,9 @@ using Arrest.Internals;
 namespace Arrest {
 
   public class RestClientEventArgs : EventArgs {
-    public readonly RestCallData CallData;
-    internal RestClientEventArgs(RestCallData callData) {
-      CallData = callData;
+    public readonly CallContext CallData;
+    internal RestClientEventArgs(CallContext callContext) {
+      CallData = callContext;
     }
   }
 
@@ -18,19 +18,19 @@ namespace Arrest {
     public event EventHandler<RestClientEventArgs> ReceivedError;
     public event EventHandler<RestClientEventArgs> CallCompleted;
 
-    internal void OnSendingRequest(RestClient client, RestCallData callData) {
-      SendingRequest?.Invoke(client, new RestClientEventArgs(callData));
+    internal void OnSendingRequest(RestClient client, CallContext callContext) {
+      SendingRequest?.Invoke(client, new RestClientEventArgs(callContext));
     }
 
-    internal void OnReceivedResponse(RestClient client, RestCallData callData) {
-      ReceivedResponse?.Invoke(client, new RestClientEventArgs(callData));
+    internal void OnReceivedResponse(RestClient client, CallContext callContext) {
+      ReceivedResponse?.Invoke(client, new RestClientEventArgs(callContext));
     }
 
-    internal void OnReceivedError(RestClient client, RestCallData callData) {
-      ReceivedError?.Invoke(client, new RestClientEventArgs(callData));
+    internal void OnReceivedError(RestClient client, CallContext callContext) {
+      ReceivedError?.Invoke(client, new RestClientEventArgs(callContext));
     }
-    internal void OnCompleted(RestClient client, RestCallData callData) {
-      CallCompleted?.Invoke(client, new RestClientEventArgs(callData));
+    internal void OnCompleted(RestClient client, CallContext callContext) {
+      CallCompleted?.Invoke(client, new RestClientEventArgs(callContext));
     }
   } //class
 }

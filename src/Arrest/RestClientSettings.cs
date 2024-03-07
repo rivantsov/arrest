@@ -15,6 +15,9 @@ namespace Arrest {
     public string ServiceUrl;
     public readonly IContentSerializer Serializer;
     public Encoding Encoding = Encoding.UTF8;
+    public JsonSerializerOptions JsonOptions;
+    public RetryPolicy RetryPolicy;
+    public int TimeoutSec;
 
     // Some APIs follow this draft for errors in REST APIs: https://tools.ietf.org/html/draft-nottingham-http-problem-07
     // So returned error is JSon but content type is problem+json
@@ -22,26 +25,16 @@ namespace Arrest {
     public string DefaultSendMediaType = "application/json";
 
 
-    public RestClientSettings(string serviceUrl, JsonSerializerOptions jsonOptions = null, IContentSerializer serializer = null) {
+    public RestClientSettings(string serviceUrl, JsonSerializerOptions jsonOptions = null, IContentSerializer serializer = null,
+                                   RetryPolicy retryPolicy = null,  int timeoutSec = 30) {
       if(serviceUrl != null && serviceUrl.EndsWith("/"))
         serviceUrl = serviceUrl.Substring(0, serviceUrl.Length - 1);
       ServiceUrl = serviceUrl;
-      jsonOptions ??= RestClient.DefaultJsonOptions;
-      Serializer = serializer ?? new JsonContentSerializer(jsonOptions);
+      JsonOptions = jsonOptions ?? RestClient.DefaultJsonOptions;
+      Serializer = serializer ?? new JsonContentSerializer(this.JsonOptions);
+      RetryPolicy = retryPolicy; //do not create default; no retries by default
+      TimeoutSec = timeoutSec; 
     }
 
-    #region Validation
-    internal static void Validate(RestClientSettings settings) {
-      ThrowIf(settings == null, "Settings parameter may not be null.");
-      ThrowIf(settings.Serializer == null, "Settings.Serializer property may not be null.");
-      ThrowIf(string.IsNullOrWhiteSpace(settings.ServiceUrl), "ServiceUrl may not be empty.");
-    }
-
-    private static void ThrowIf(bool value, string message) {
-      if (value)
-        throw new Exception(message);
-    }
-
-    #endregion 
   }//class
 }

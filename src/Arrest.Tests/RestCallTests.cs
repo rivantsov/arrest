@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Arrest.Internals;
+using Microsoft.Net.Http.Headers;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
 
 namespace Arrest.Tests {
 
@@ -121,19 +124,28 @@ namespace Arrest.Tests {
     [TestMethod]
     public async Task TestSpecialArguments() {
       // we are testing custom headers that are provided to a single call; for example X-CorrelationId header.
-      // also cancellation token, and ResponseBox (to get response header)
+      // also cancellation token, and ArgContextBox (to get response header)
       const string HeaderName = "X-CorrelationId";
       var tokenSource = new CancellationTokenSource();
       var token = tokenSource.Token; 
 
       var client = new RestClient(TestEnv.ServiceUrl + "/api/testdata");
-      var respBox = new ResponseBox(); 
+      var respBox = new ArgContextBox(); 
       var corrId = Guid.NewGuid().ToString();
       
       var corrIdBack = await client.GetAsync<string>("echocorrelationid", (HeaderName, corrId), respBox, token);
       Assert.AreEqual(corrId, corrIdBack); //returned as function result
       var respHeaderValue = respBox.GetResponseHeader(HeaderName)?.FirstOrDefault();
       Assert.AreEqual(corrId, respHeaderValue);
+    }
+
+    [TestMethod]
+    public async Task TestRetries() {
+      var retry = new RetryPolicy(0.5, 0.5, 0.5, 0.5); //retry 4 times with interval 0.5 seconds
+      var client = new RestClient(TestEnv.ServiceUrl + "/api/testdata", retryPolicy: retry );
+      // server throws errors - 3 times, but client retries and finally 
+      var respOK = await client.GetAsync<string>("make-server-error");
+      Assert.AreEqual("OK", respOK);
     }
 
   }

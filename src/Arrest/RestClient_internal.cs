@@ -11,6 +11,7 @@ using System.Threading;
 using System.IO;
 using Arrest.Internals;
 using System.Diagnostics;
+using System.Collections;
 
 namespace Arrest {
 
@@ -29,36 +30,53 @@ namespace Arrest {
     #endregion 
 
 
-    /// <summary>
-    /// Formats URL from a template with standard numeric placeholders, ex: {0}. All argument values 
-    /// are URL-escaped. The returned URL is full URL, starting with base service address. 
-    /// </summary>
-    /// <param name="template">URL template, not including base service part.</param>
-    /// <param name="args">Arguments to insert into the template.</param>
-    /// <returns>Full formatted URL.</returns>
-    public string GetFullUrl(string template, IList<object> args) {
-      if (string.IsNullOrWhiteSpace(template))
-        return Settings.ServiceUrl;
-      var url = RestUtility.FormatUrl(template, args.ToArray());
-      string fullUrl;
-      //Check if template is abs URL
-      if (url.StartsWith("http://") || template.StartsWith("https://"))
-        fullUrl = template;
-      else {
-        var ch0 = url[0];
-        var needDelim = ch0 != '/' && ch0 != '?';
-        var delim = needDelim ? "/" : string.Empty;
-        fullUrl = Settings.ServiceUrl + delim + url;
-      }
-      return fullUrl;
-    }
-
     private async Task<TResult> SendAsyncImpl<TBody, TResult>(HttpMethod method, string urlTemplate, object[] args,
                         TBody body, string acceptMediaTypes = null) {
-      var start = RestUtility.GetTimestamp();
-      // Prepare callData
-      var callData = new RestCallData() {
+
+      var callContext = InitCallData<TBody, TResult>(method, urlTemplate, args, body, acceptMediaTypes);
+      var waitTimes = Settings?.RetryPolicy?.RetryIntervalsSec ?? new double[] { 0.0 }; // make sure there's at lease one element
+      foreach(var waitTime in waitTimes) {
+        await SendMessageAsync(callContext);
+        if (!ShouldRetry(callContext))
+          break;
+        if (waitTime > 0) // waitTime should be > 0 here, but just in case
+          await Task.Delay((int)waitTime * 1000); // seconds to ms
+      }
+      // post-call actions
+      if (callContext.Exception != null)
+        throw callContext.Exception;
+      return (TResult)callContext.ResponseBodyObject;
+    }
+
+    private async Task SendMessageAsync(CallContext callContext) {
+      callContext.Exception = null;
+      callContext.Response = null; 
+      callContext.TryCount++;
+      callContext.StartTimestamp = RestUtility.GetTimestamp();
+      BuildRequestMessage(callContext);
+
+      this.Events.OnSendingRequest(this, callContext);
+      callContext.Response = await HttpClient.SendAsync(callContext.Request, callContext.CancellationToken);
+      this.Events.OnCompleted(this, callContext);
+
+      callContext.TimeElapsed = RestUtility.GetTimeSince(callContext.StartTimestamp);
+      //check error
+      if (callContext.Response.IsSuccessStatusCode) {
+        this.Events.OnReceivedResponse(this, callContext);
+        await ReadResponseBodyAsync(callContext);
+      } else {
+        callContext.Exception = await this.ReadErrorResponseAsync(callContext);
+        this.Events.OnReceivedError(this, callContext);
+      }
+      // get time again to include deserialization time
+      callContext.TimeElapsed = RestUtility.GetTimeSince(callContext.StartTimestamp);
+    }
+
+    private CallContext InitCallData<TBody, TResult>(HttpMethod method, string urlTemplate, object[] args,
+                        TBody body, string acceptMediaTypes = null) {
+      var callContext = new CallContext() {
         StartedAtUtc = RestUtility.GetUtc(),
+        StartTimestamp = RestUtility.GetTimestamp(),
         HttpMethod = method,
         UrlTemplate = urlTemplate,
         Url = urlTemplate, // default, in case no args
@@ -68,132 +86,115 @@ namespace Arrest {
         ReturnValueKind = GetReturnValueKind(typeof(TResult)),
         RequestBodyObject = body,
       };
-      // Preprocess args - separate UrlTemplate args from otheres: headers, cancelToken, ResponseBox
-      PreprocessArgs(callData, args);
-      callData.Url = GetFullUrl(callData.UrlTemplate, callData.UrlParameters);
+      // Preprocess args - separate UrlTemplate args from otheres: headers, cancelToken, ArgContextBox
+      PreprocessArgs(callContext, args);
+      callContext.Url = GetFullUrl(callContext.UrlTemplate, callContext.UrlParameters);
+      BuildHttpRequestContent(callContext);
+      return callContext;
+    }
 
-      // Create RequestMessage, setup headers, serialize body
-      callData.Request = new HttpRequestMessage(callData.HttpMethod, callData.Url);
-      var headers = callData.Request.Headers;
-      headers.Add("accept", callData.AcceptMedaTypes);
-      foreach (var kv in this.DefaultRequestHeaders)
-        headers.Add(kv.Key, kv.Value);
-      // dynamic headers
-      foreach (var tpl in callData.DynamicHeaders)
-        headers.Add(tpl.Item1, tpl.Item2);
-      BuildHttpRequestContent(callData);
-
-
-      this.Events.OnSendingRequest(this, callData);
-
-      //actually make a call
-      callData.Response = await HttpClient.SendAsync(callData.Request, callData.CancellationToken);
-      callData.TimeElapsed = RestUtility.GetTimeSince(start); //measure time in case we are about to cancel and throw
-
-      //check error
-      if (callData.Response.IsSuccessStatusCode) {
-        this.Events.OnReceivedResponse(this, callData);
-        await ReadResponseBodyAsync(callData);
-      } else {
-        callData.Exception = await this.ReadErrorResponseAsync(callData);
-        this.Events.OnReceivedError(this, callData);
-      }
-      // get time again to include deserialization time
-      callData.TimeElapsed = RestUtility.GetTimeSince(start);
-      // Log
-      // args: operationContext, clientName, urlTemplate, urlArgs, request, response, requestBody, responseBody, timeMs, exc 
-      var timeMs = (int) callData.TimeElapsed.TotalMilliseconds;
-      this.Events.OnCompleted(this, callData);
-      if (callData.Exception != null)
-        throw callData.Exception;
-      return (TResult)callData.ResponseBodyObject;
-    }//method
-
-    private void PreprocessArgs(RestCallData callData, object[] args) {
+    private void PreprocessArgs(CallContext callContext, object[] args) {
       if (args == null || args.Length == 0)
         return;
       foreach(var arg in args) {
         switch(arg) {
           case null:
-            callData.UrlParameters.Add(null);
+            callContext.UrlParameters.Add(null);
             break;
           case CancellationToken tkn:
-            callData.CancellationToken = tkn;
+            callContext.CancellationToken = tkn;
             break;
-          case AcceptMediaType mt:
-            callData.AcceptMedaTypes = mt.MediaType;
+          case ArgAcceptMediaType mt:
+            callContext.AcceptMedaTypes = mt.MediaType;
             break;
-          case ResponseBox rb:
-            callData.ResponseBox = rb;
-            rb.CallData = callData; 
+          case ArgContextBox rb:
+            callContext.ResponseBox = rb;
+            rb.CallContext = callContext; 
             break;
           case ValueTuple<string, string> hdr:
-            callData.DynamicHeaders.Add(hdr);
+            callContext.DynamicHeaders.Add(hdr);
             break; 
           default:
-            callData.UrlParameters.Add(arg);
+            callContext.UrlParameters.Add(arg);
             break; 
         }
       }
     }
 
-    private async Task ReadResponseBodyAsync(RestCallData callData) {
-      var content = callData.Response.Content;
+    private void BuildRequestMessage(CallContext callContext) {
+      // Create RequestMessage, setup headers
+      callContext.Request = new HttpRequestMessage(callContext.HttpMethod, callContext.Url);
+      callContext.Request.Content = callContext.RequestContent;
+      var headers = callContext.Request.Headers;
+      headers.Add("accept", callContext.AcceptMedaTypes);
+      foreach (var kv in this.DefaultRequestHeaders)
+        headers.Add(kv.Key, kv.Value);
+      // dynamic headers
+      foreach (var tpl in callContext.DynamicHeaders)
+        headers.Add(tpl.Item1, tpl.Item2);
+    }
+
+
+    private async Task ReadResponseBodyAsync(CallContext callContext) {
+      var content = callContext.Response.Content;
       // check response body kind
-      callData.ResponseBodyString = "(not set)";
-      switch (callData.ReturnValueKind) {
+      callContext.ResponseBodyString = "(not set)";
+      switch (callContext.ReturnValueKind) {
         case ReturnValueKind.None:
           return;
         case ReturnValueKind.HttpResponseMessage:
-          callData.ResponseBodyObject = callData.Response;
+          callContext.ResponseBodyObject = callContext.Response;
           return;
         case ReturnValueKind.HttpContent:
-          callData.ResponseBodyObject = content;
+          callContext.ResponseBodyObject = content;
           return;
         case ReturnValueKind.Stream:
-          callData.ResponseBodyObject = await content.ReadAsStreamAsync();
+          callContext.ResponseBodyObject = await content.ReadAsStreamAsync();
           return;
         case ReturnValueKind.HttpStatusCode:
-          var status = callData.Response.StatusCode;
-          callData.ResponseBodyObject = status;
+          var status = callContext.Response.StatusCode;
+          callContext.ResponseBodyObject = status;
           return;
         case ReturnValueKind.Object:
           // read as string and then deserialize
-          callData.ResponseBodyString = await content.ReadAsStringAsync();
-          if (!string.IsNullOrEmpty(callData.ResponseBodyString))
-            callData.ResponseBodyObject = Settings.Serializer.Deserialize(
-                 callData.ResponseBodyString, callData.ResponseBodyType);
+          callContext.ResponseBodyString = await content.ReadAsStringAsync();
+          if (!string.IsNullOrEmpty(callContext.ResponseBodyString))
+            callContext.ResponseBodyObject = Settings.Serializer.Deserialize(
+                 callContext.ResponseBodyString, callContext.ResponseBodyType);
           return;
       }// switch
     }
 
-    private void BuildHttpRequestContent(RestCallData request) {
-      var body = request.RequestBodyObject;
+    private void BuildHttpRequestContent(CallContext callContext) {
+      var body = callContext.RequestBodyObject;
       if (body == null)
         return;
-      // = ApiClientUtil.GetRequestBodyKind(request.HttpMethod, request.RequestBodyType);
-      if (typeof(HttpContent).IsAssignableFrom(request.RequestBodyType))
-        request.Request.Content = (HttpContent)body;
-      else if (typeof(Stream).IsAssignableFrom(request.RequestBodyType)) {
+      // = ApiClientUtil.GetRequestBodyKind(callContext.HttpMethod, callContext.RequestBodyType);
+      if (typeof(HttpContent).IsAssignableFrom(callContext.RequestBodyType))
+        callContext.RequestContent = (HttpContent)body;
+      else if (typeof(Stream).IsAssignableFrom(callContext.RequestBodyType)) {
         var stream = (Stream)body;
-        request.Request.Content = new StreamContent(stream);
+        callContext.RequestContent = new StreamContent(stream);
       } else {
         var json = Settings.Serializer.Serialize(body);
-        request.Request.Content = new StringContent(json, this.Settings.Encoding, this.Settings.DefaultSendMediaType);
+        callContext.RequestContent = new StringContent(json, this.Settings.Encoding, this.Settings.DefaultSendMediaType);
       }
     }
 
-    internal virtual async Task<Exception> ReadErrorResponseAsync(RestCallData callData) {
-      string details = null;
+    internal virtual async Task<Exception> ReadErrorResponseAsync(CallContext callContext) {
+      var status = callContext.Response.StatusCode;
+      string body = null;
       try {
-        details = await callData.Response.Content.ReadAsStringAsync();
+        body = await callContext.Response.Content.ReadAsStringAsync();
       } catch (Exception exc) {
-        details = $"(failed to read content: {exc.Message} )";
+        body = $"(failed to read content: {exc.Message} )";
       }
-      if (callData.Response.StatusCode == HttpStatusCode.BadRequest)
-        return new BadRequestException(details);
+      if (string.IsNullOrEmpty(body))
+        body = $"Server returned status code {(int)status} {status}, no details returned.";
+      if (status == HttpStatusCode.BadRequest)
+        return new BadRequestException(body);
       else
-        return new RestException(details, callData.Response.StatusCode);
+        return new RestException(body, callContext.Response.StatusCode);
     }
 
     private static ReturnValueKind GetReturnValueKind(Type type) {
@@ -208,6 +209,14 @@ namespace Arrest {
       if (typeof(System.IO.Stream).IsAssignableFrom(type))
         return ReturnValueKind.Stream;
       return ReturnValueKind.Object;
+    }
+
+    private bool ShouldRetry(CallContext callContext) {
+      if (callContext.Exception == null || Settings.RetryPolicy == null ||
+          callContext.CancellationToken.IsCancellationRequested || callContext.Response == null)
+        return false;
+      var httpStatus = callContext.Response.StatusCode;
+      return this.Settings.RetryPolicy.ShouldRetry(httpStatus);
     }
 
   }//class

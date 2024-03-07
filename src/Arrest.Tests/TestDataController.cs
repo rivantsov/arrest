@@ -62,5 +62,15 @@ namespace Arrest.Tests {
     }
 
 
+    [HttpGet("make-server-error")]
+    public string MakeServerError() {
+     if (ErrorsToThrowCount > 0) {
+        ErrorsToThrowCount--;
+        throw new Exception("Server error");
+      }
+      return "OK";
+    }
+
+    public static int ErrorsToThrowCount = 3; // decrements to zero
   }
 }

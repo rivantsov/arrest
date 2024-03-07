@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arrest", "Arrest\Arrest.csp
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0D8B498A-A0B3-4BDB-A392-C5E9FF6CD643}"
 	ProjectSection(SolutionItems) = preProject
-		ReadMe.MD = ReadMe.MD
+		..\ReadMe.MD = ..\ReadMe.MD
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arrest.Tests", "Arrest.Tests\Arrest.Tests.csproj", "{8B6BED5D-57A2-47A6-95C0-47691287CE4A}"

@@ -8,6 +8,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace Arrest {
   public partial class RestClient {
@@ -32,11 +33,10 @@ namespace Arrest {
 
     #region constructors
 
-    public RestClient(string baseUrl, HttpClient httpClient = null, JsonSerializerOptions jsonOptions = null)
-      : this(new RestClientSettings(baseUrl, jsonOptions), httpClient) { }
+    public RestClient(string baseUrl, HttpClient httpClient = null, JsonSerializerOptions jsonOptions = null, RetryPolicy retryPolicy = null, int timeoutSec = 30)
+      : this(new RestClientSettings(baseUrl, jsonOptions, retryPolicy: retryPolicy, timeoutSec: timeoutSec), httpClient) { }
 
     public RestClient(RestClientSettings settings, HttpClient httpClient = null) {
-      RestClientSettings.Validate(settings);
       Settings = settings;
 
       if (httpClient != null) {
@@ -46,6 +46,7 @@ namespace Arrest {
         SharedHttpClientHandler = SharedHttpClientHandler ?? new HttpClientHandler();
         HttpClient = new HttpClient(SharedHttpClientHandler);
       }
+      HttpClient.Timeout = TimeSpan.FromSeconds(Settings.TimeoutSec);
     }
 
     #endregion
@@ -132,11 +133,31 @@ namespace Arrest {
     public string GetString(string url, params object[] args) {
       return SyncAsync.RunSync(() => this.GetStringAsync(url, args));
     }
-
-
-
     #endregion
 
+    /// <summary>
+    /// Formats URL from a template with standard numeric placeholders, ex: {0}. All argument values 
+    /// are URL-escaped. The returned URL is full URL, starting with base service address. 
+    /// </summary>
+    /// <param name="template">URL template, not including base service part.</param>
+    /// <param name="args">Arguments to insert into the template.</param>
+    /// <returns>Full formatted URL.</returns>
+    public string GetFullUrl(string template, IList<object> args) {
+      if (string.IsNullOrWhiteSpace(template))
+        return Settings.ServiceUrl;
+      var url = RestUtility.FormatUrl(template, args.ToArray());
+      string fullUrl;
+      //Check if template is abs URL
+      if (url.StartsWith("http://") || template.StartsWith("https://"))
+        fullUrl = template;
+      else {
+        var ch0 = url[0];
+        var needDelim = ch0 != '/' && ch0 != '?';
+        var delim = needDelim ? "/" : string.Empty;
+        fullUrl = Settings.ServiceUrl + delim + url;
+      }
+      return fullUrl;
+    }
 
     //For staging sites, to allow using https with self-issued certificates
     public static void SetAllowSelfIssuedCertificates() {
